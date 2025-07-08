@@ -9,15 +9,34 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onLanguage:java"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "j2k-vscode.helloWorld",
-        "title": "Hello World"
+        "command": "j2k.convertFile",
+        "title": "J2K: Convert to Kotlin"
+      },
+      {
+        "command": "j2k.acceptAndReplaceConversion",
+        "title": "J2K: Accept Conversion and Replace"
+      },
+      {
+        "command": "j2k.cancelConversion",
+        "title": "J2K: Cancel Conversion"
       }
-    ]
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "j2k.convertFile",
+          "when": "resourceExtname == .java",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

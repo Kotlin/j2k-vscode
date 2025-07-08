@@ -1,9 +1,10 @@
-import { Uri } from "vscode";
+import * as vscode from "vscode";
 import { VCSFileRenamer } from ".";
 
 // note: not many reliable docs on the git api that vscode exposes
 // this comes from https://github.com/microsoft/vscode/tree/main/extensions/git
-import type { GitExtension, API as GitAPI } from "./git.d";
+import type { GitExtension, API as GitAPI, Repository } from "./git.d";
+import { report } from "process";
 
 export class GitFileRenamer implements VCSFileRenamer {
   private api: GitAPI;
@@ -12,5 +13,17 @@ export class GitFileRenamer implements VCSFileRenamer {
     this.api = api;
   }
 
-  async renameAndCommit(oldUri: Uri, newUri: Uri): Promise<void> {}
+  async renameAndCommit(oldUri: vscode.Uri, newUri: vscode.Uri): Promise<void> {
+    await vscode.workspace.fs.rename(oldUri, newUri);
+
+    const repo: Repository | null = this.api.getRepository(oldUri);
+
+    if (repo === null) {
+
+    }
+  }
+
+  async stageConversionReplacement(kotlinUri: vscode.Uri): Promise<void> {
+    
+  }
 }

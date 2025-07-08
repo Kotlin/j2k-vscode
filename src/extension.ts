@@ -3,6 +3,7 @@ import * as assert from "assert";
 import * as path from "path";
 
 import { convertToKotlin } from "./converter";
+import { detectVCS, VCSFileRenamer } from "./vcs";
 
 // larger numbers mean closer to the StatusBarAlignment:
 // we put Cancel immediately to the left of Accept
@@ -39,6 +40,9 @@ export function activate(context: vscode.ExtensionContext) {
 
   // for general purpose logging
   const outputChannel = vscode.window.createOutputChannel("j2k-vscode");
+
+  // to preserve VC history
+  const vcsHandler: VCSFileRenamer = detectVCS();
 
   // accept/discard buttons for viewing the diff
   const acceptButton = vscode.window.createStatusBarItem(
@@ -102,6 +106,11 @@ export function activate(context: vscode.ExtensionContext) {
       const newPath = path.join(dir, base + ".kt");
 
       const kotlinReplacement = vscode.Uri.file(newPath);
+
+      // rename the java file to .kt file extension to preserve commit
+      // history, then commit
+
+      vcsHandler.renameAndCommit(javaUri, kotlinReplacement);
 
       // write the kotlin file, then delete the old java file
       await vscode.workspace.fs.writeFile(

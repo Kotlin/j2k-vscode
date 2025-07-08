@@ -2,11 +2,14 @@ import { extensions, Uri } from "vscode";
 
 import type { GitExtension } from "./git.d";
 import { GitFileRenamer } from "./git";
+import { StandardFileRenamer } from "./standard";
 
 const GITAPI_VERSION_NUMBER = 1;
 
 export interface VCSFileRenamer {
   renameAndCommit(oldUri: Uri, newUri: Uri): Promise<void>;
+
+  stageConversionReplacement(kotlinUri: Uri): Promise<void>;
 }
 
 export function detectVCS(): VCSFileRenamer {
@@ -15,13 +18,12 @@ export function detectVCS(): VCSFileRenamer {
   if (gitExt?.enabled) {
     const api = gitExt.getAPI(GITAPI_VERSION_NUMBER);
 
-    return new GitFileRenamer(api);
+    if (api.repositories.length > 0) {
+      // we guarantee that 
+      return new GitFileRenamer(api);
+    }
   }
 
-  // return no-op renamer to simplify logic
-  return {
-    async renameAndCommit() {
-      // no op
-    },
-  };
+  // return standard fs renamer to simplify logic
+  return new StandardFileRenamer();
 }

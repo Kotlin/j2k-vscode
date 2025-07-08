@@ -17,15 +17,15 @@
     "commands": [
       {
         "command": "j2k.convertFile",
-        "title": "J2K: Convert Java to Kotlin"
+        "title": "J2K: Convert to Kotlin"
       },
       {
         "command": "j2k.acceptAndReplaceConversion",
-        "title": "J2K: Accept Kotlin Conversion and Replace"
+        "title": "J2K: Accept Conversion and Replace"
       },
       {
         "command": "j2k.cancelConversion",
-        "title": "J2K: Cancel Kotlin Conversion"
+        "title": "J2K: Cancel Conversion"
       }
     ],
     "menus": {

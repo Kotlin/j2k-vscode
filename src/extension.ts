@@ -83,7 +83,7 @@ export function activate(context: vscode.ExtensionContext) {
       outputChannel.appendLine("Java to Kotlin Preview ready");
     },
   );
-  
+
   const acceptAndReplace = vscode.commands.registerCommand(
     "j2k.acceptAndReplaceConversion",
     async () => {
@@ -104,20 +104,27 @@ export function activate(context: vscode.ExtensionContext) {
       const kotlinReplacement = vscode.Uri.file(newPath);
 
       // write the kotlin file, then delete the old java file
-      await vscode.workspace.fs.writeFile(kotlinReplacement, Buffer.from(replacementCode, "utf-8"));
+      await vscode.workspace.fs.writeFile(
+        kotlinReplacement,
+        Buffer.from(replacementCode, "utf-8"),
+      );
       await vscode.workspace.fs.delete(javaUri);
 
       // tidy up any changed state
-      await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
-    }
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor",
+      );
+    },
   );
 
   const cancelAndDiscard = vscode.commands.registerCommand(
     "j2k.cancelConversion",
     async () => {
       // tidy up any changed state
-      await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
-    }
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor",
+      );
+    },
   );
 
   context.subscriptions.push(convertFile, acceptAndReplace, cancelAndDiscard);

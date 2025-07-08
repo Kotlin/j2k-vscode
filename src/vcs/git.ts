@@ -1,5 +1,5 @@
-import { Uri } from 'vscode';
-import { VCSFileRenamer } from '.';
+import { Uri } from "vscode";
+import { VCSFileRenamer } from ".";
 
 // note: not many reliable docs on the git api that vscode exposes
 // this comes from https://github.com/microsoft/vscode/tree/main/extensions/git
@@ -12,7 +12,5 @@ export class GitFileRenamer implements VCSFileRenamer {
     this.api = api;
   }
 
-  async rename(oldUri: Uri, newUri: Uri): Promise<void> {
-
-  }
+  async renameAndCommit(oldUri: Uri, newUri: Uri): Promise<void> {}
 }

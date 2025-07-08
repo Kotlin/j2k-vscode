@@ -4,6 +4,13 @@ import * as path from "path";
 
 import { convertToKotlin } from "./converter";
 
+// larger numbers mean closer to the StatusBarAlignment:
+// we put Cancel immediately to the left of Accept
+const StatusBarPriorities = {
+  ACCEPT: 100,
+  CANCEL: 99,
+} as const;
+
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
   if (!editor) {
     return false;
@@ -36,14 +43,14 @@ export function activate(context: vscode.ExtensionContext) {
   // accept/discard buttons for viewing the diff
   const acceptButton = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
-    99,
+    StatusBarPriorities.ACCEPT,
   );
   acceptButton.text = "(J2K Conversion) Accept and Replace";
   acceptButton.command = "j2k.acceptAndReplaceConversion";
 
   const cancelButton = vscode.window.createStatusBarItem(
     vscode.StatusBarAlignment.Right,
-    100,
+    StatusBarPriorities.CANCEL,
   );
   cancelButton.text = "(J2K Conversion) Cancel";
   cancelButton.command = "j2k.cancelConversion";

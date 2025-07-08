@@ -19,7 +19,9 @@ export function detectVCS(): VCSFileRenamer {
     const api = gitExt.getAPI(GITAPI_VERSION_NUMBER);
 
     if (api.repositories.length > 0) {
-      // we guarantee that 
+      // we guarantee that there is at least one repository opened
+      // before we return a gitfilerenamer, so that we can interact
+      // with the repository without validating the above
       return new GitFileRenamer(api);
     }
   }

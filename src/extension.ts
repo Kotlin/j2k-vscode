@@ -1,14 +1,13 @@
 import * as vscode from "vscode";
+import * as assert from "assert";
+import * as path from "path";
 
 import { convertToKotlin } from "./converter";
 
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
-  console.log("here");
   if (!editor) {
     return false;
   }
-
-  console.log("here1");
 
   // when opening the diff, the right hand side is automatically focused
   // this is our kotlin window
@@ -25,6 +24,12 @@ function inDiff(editor: vscode.TextEditor | undefined): boolean {
 }
 
 export function activate(context: vscode.ExtensionContext) {
+  // so that we don't have to discover open workspaces when accepting/rejecting,
+  // we convey this state between the convert command
+  // and the accept/cancel commands
+  let javaUri: vscode.Uri;
+  let kotlinUri: vscode.Uri;
+
   // for general purpose logging
   const outputChannel = vscode.window.createOutputChannel("j2k-vscode");
 
@@ -52,12 +57,14 @@ export function activate(context: vscode.ExtensionContext) {
 
       const javaBuf = await vscode.workspace.openTextDocument(uri);
       const javaCode = javaBuf.getText();
+      javaUri = uri;
 
       const kotlinCode = convertToKotlin(javaCode);
       const kotlinBuf = await vscode.workspace.openTextDocument({
         language: "kotlin",
         content: kotlinCode,
       });
+      kotlinUri = kotlinBuf.uri;
 
       await vscode.commands.executeCommand(
         "vscode.diff",
@@ -69,19 +76,52 @@ export function activate(context: vscode.ExtensionContext) {
       outputChannel.appendLine("Java to Kotlin Preview ready");
     },
   );
+  
+  const acceptAndReplace = vscode.commands.registerCommand(
+    "j2k.acceptAndReplaceConversion",
+    async () => {
+      // PRE: our diff is open therefore j2k.convertFile has run
+      assert.ok(javaUri, "javaUri is not set before accepting conversion");
+      assert.ok(kotlinUri, "kotlinUri is not set before accepting conversion");
 
-  context.subscriptions.push(convertFile);
+      const kotlinDoc = await vscode.workspace.openTextDocument(kotlinUri);
+      const replacementCode = kotlinDoc.getText();
+
+      // write the replacement code to the same location as the java
+
+      const oldPath = javaUri.fsPath;
+      const dir = path.dirname(oldPath);
+      const base = path.basename(oldPath, ".java");
+      const newPath = path.join(dir, base + ".kt");
+
+      const kotlinReplacement = vscode.Uri.file(newPath);
+
+      // write the kotlin file, then delete the old java file
+      await vscode.workspace.fs.writeFile(kotlinReplacement, Buffer.from(replacementCode, "utf-8"));
+      await vscode.workspace.fs.delete(javaUri);
+
+      // tidy up any changed state
+      await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
+    }
+  );
+
+  const cancelAndDiscard = vscode.commands.registerCommand(
+    "j2k.cancelConversion",
+    async () => {
+      // tidy up any changed state
+      await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
+    }
+  );
+
+  context.subscriptions.push(convertFile, acceptAndReplace, cancelAndDiscard);
 
   // only show our buttons when we are actively in the diff editor
   vscode.window.onDidChangeActiveTextEditor(
     (editor: vscode.TextEditor | undefined) => {
-      console.log("editor changed!");
       if (inDiff(editor)) {
-        console.log("show buttons");
         acceptButton.show();
         cancelButton.show();
       } else {
-        console.log("HIDE BUTTONS");
         acceptButton.hide();
         cancelButton.hide();
       }

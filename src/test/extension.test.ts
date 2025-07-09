@@ -1,15 +1,36 @@
 import * as assert from "assert";
-
-// You can import and use all API from the 'vscode' module
-// as well as import your extension to test it
+import * as sinon from 'sinon';
 import * as vscode from "vscode";
-// import * as myExtension from '../../extension';
+import { activate } from "../extension";
 
-suite("Extension Test Suite", () => {
-  vscode.window.showInformationMessage("Start all tests.");
+suite("test extension", () => {
+  let registerStub: sinon.SinonStub;
 
-  test("Sample test", () => {
-    assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-    assert.strictEqual(-1, [1, 2, 3].indexOf(0));
+  setup(() => {
+    registerStub = sinon.stub(vscode.commands, "registerCommand")
+      .callsFake(() => ({ dispose() { /* no-op duck-typed disposable */ } }));
+  });
+
+  teardown(() => {
+    registerStub.restore();
+  });
+
+  test("registers all command IDs", () => {
+    const fakeContext = { subscriptions: [] } as unknown as vscode.ExtensionContext;
+
+    activate(fakeContext);
+
+    const commandsObserved = registerStub.getCalls().map(call => call.args[0]).sort();
+    const commandsExpected = [
+      "j2k.acceptAndReplaceConversion",
+      "j2k.cancelConversion",
+      "j2k.convertFile",
+    ].sort();
+
+    assert.deepStrictEqual(
+      commandsObserved,
+      commandsExpected,
+      `activate() should register exactly the ${commandsExpected.length} commands ${commandsExpected.join(", ")}`
+    );
   });
 });

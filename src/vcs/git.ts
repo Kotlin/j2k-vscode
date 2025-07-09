@@ -11,23 +11,31 @@ import type { GitExtension, API as GitAPI, Repository } from "./git.d";
 // of 0 repositories
 export class GitFileRenamer implements VCSFileRenamer {
   private api: GitAPI;
+  private channel: vscode.OutputChannel;
 
   name: string = "Git";
 
-  constructor(api: GitAPI) {
+  constructor(api: GitAPI, channel: vscode.OutputChannel) {
     this.api = api;
+    this.channel = channel;
   }
 
   async renameAndCommit(oldUri: vscode.Uri, newUri: vscode.Uri): Promise<void> {
     await vscode.workspace.fs.rename(oldUri, newUri);
+    
+    this.channel.appendLine(`GitFileRenamer: Renamed file ${oldUri} to ${newUri}`);
 
     const repo: Repository = this.api.getRepository(oldUri)!;
 
     // a Repository object doesn't expose a remove/delete method
-    // await vscode.commands.executeCommand("git.stage", oldUri);
+    await vscode.commands.executeCommand("git.stage", oldUri);
     await repo.add([newUri.fsPath]);
 
+    this.channel.appendLine(`GitFileRenamer: Staged the rename as a deletion and addition`);
+
     await repo.commit(`Rename ${oldUri.path} -> ${newUri.path}`);
+    
+    this.channel.appendLine(`GitFileRenamer: Committed the rename`);
   }
 
   async stageConversionReplacement(kotlinUri: vscode.Uri): Promise<void> {
@@ -35,7 +43,11 @@ export class GitFileRenamer implements VCSFileRenamer {
 
     await repo.add([kotlinUri.fsPath]);
 
+    this.channel.appendLine(`GitFileRenamer: Staged the replacement of Java code with Kotlin`);
+
     // maybe overkill
-    // await repo.commit(`Convert ${kotlinUri.path} to Kotlin`);
+    await repo.commit(`Convert ${kotlinUri.path} to Kotlin`);
+    
+    this.channel.appendLine(`GitFileRenamer: Committed the Kotlin replacement`);
   }
 }

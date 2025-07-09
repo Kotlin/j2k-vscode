@@ -1,4 +1,4 @@
-import { extensions, Uri } from "vscode";
+import { extensions, Uri, OutputChannel } from "vscode";
 
 import type { GitExtension } from "./git.d";
 import { GitFileRenamer } from "./git";
@@ -14,25 +14,33 @@ export interface VCSFileRenamer {
   stageConversionReplacement(kotlinUri: Uri): Promise<void>;
 }
 
-export function detectVCS(): VCSFileRenamer {
-  const gitExt = extensions.getExtension<GitExtension>("vscode.git")?.exports;
+export async function detectVCS(outputChannel: OutputChannel): Promise<VCSFileRenamer> {
+  const gitExt = extensions.getExtension<GitExtension>("vscode.git");
 
-  if (gitExt?.enabled) {
-    console.log("git extension enabled");
-    const api = gitExt.getAPI(GITAPI_VERSION_NUMBER);
+  if (gitExt) {
+    const exports = (await gitExt.activate());
+    if (exports.enabled) {
+      // nested if as we need to validate that the extension exists
+      // and that it's enabled separately
+      outputChannel.appendLine(`detectVCS: Active git extension found`);
+      const api = exports.getAPI(GITAPI_VERSION_NUMBER);
 
-    console.log(api.repositories.length);
+      if (api.repositories.length > 0) {
+        // we guarantee that there is at least one repository opened
+        // before we return a gitfilerenamer, so that we can interact
+        // with the repository without validating the above
+        
+        // note: the above is not the best method, as the repository can change
+        // between conversions, so assuming the repository doesn't change
+        // is an unreasonable assumption
+        return new GitFileRenamer(api, outputChannel);
+      }
 
-    if (api.repositories.length > 0) {
-      // we guarantee that there is at least one repository opened
-      // before we return a gitfilerenamer, so that we can interact
-      // with the repository without validating the above
-      console.log("Using git for the file renamer");
-      return new GitFileRenamer(api);
+      outputChannel.appendLine(`detectVCS: ${api.repositories.length > 0 ? "U" : "Not u"}sing Git as VCS`);
     }
   }
 
-  console.log("Using a standard FS file renamer");
+  outputChannel.appendLine(`detectVCS: No VC repository found, defaulting to none`);
   // return standard fs renamer to simplify logic
-  return new StandardFileRenamer();
+  return new StandardFileRenamer(outputChannel);
 }

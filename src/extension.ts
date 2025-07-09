@@ -27,7 +27,7 @@ function inDiff(editor: vscode.TextEditor | undefined): boolean {
   return inDiff;
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   // so that we don't have to discover open workspaces when accepting/rejecting,
   // we convey this state between the convert command
   // and the accept/cancel commands
@@ -38,10 +38,8 @@ export function activate(context: vscode.ExtensionContext) {
   const outputChannel = vscode.window.createOutputChannel("j2k-vscode");
   outputChannel.appendLine("Output channel loaded");
 
-  // to preserve VC history
-  const vcsHandler: VCSFileRenamer = detectVCS();
-
-  outputChannel.appendLine(`VCS detected: ${vcsHandler.name}`);
+  // to preserve VC history, lazy load vcsHandler
+  let vcsHandler: VCSFileRenamer;
 
   // accept/discard buttons for viewing the diff
   const acceptButton = vscode.window.createStatusBarItem(
@@ -64,6 +62,9 @@ export function activate(context: vscode.ExtensionContext) {
     "j2k.convertFile",
     async (uri: vscode.Uri) => {
       outputChannel.appendLine(`Converting ${uri.fsPath}`);
+
+      vcsHandler = await detectVCS(outputChannel);
+      outputChannel.appendLine(`VCS detected: ${vcsHandler.name}`);
 
       const javaBuf = await vscode.workspace.openTextDocument(uri);
       const javaCode = javaBuf.getText();
@@ -109,7 +110,7 @@ export function activate(context: vscode.ExtensionContext) {
       // rename the java file to .kt file extension to preserve commit
       // history, then commit
 
-      // await vcsHandler.renameAndCommit(javaUri, kotlinReplacement);
+      await vcsHandler.renameAndCommit(javaUri, kotlinReplacement);
 
       // write the kotlin file, then delete the old java file
       await vscode.workspace.fs.writeFile(
@@ -117,7 +118,7 @@ export function activate(context: vscode.ExtensionContext) {
         Buffer.from(replacementCode, "utf-8"),
       );
 
-      // await vcsHandler.stageConversionReplacement(kotlinReplacement);
+      await vcsHandler.stageConversionReplacement(kotlinReplacement);
 
       // tidy up any changed state
       await vscode.commands.executeCommand(

@@ -37,7 +37,19 @@
           "group": "navigation"
         }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "key": "ctrl+enter",
+        "command": "j2k.acceptAndReplaceConversion",
+        "when": "inDiffEditor && editorLangId == kotlin && resourceScheme == untitled"
+      },
+      {
+        "key": "escape",
+        "command": "j2k.cancelConversion",
+        "when": "inDiffEditor && editorLangId == kotlin && resourceScheme == untitled"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

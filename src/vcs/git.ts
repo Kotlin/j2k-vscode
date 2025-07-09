@@ -12,6 +12,8 @@ import type { GitExtension, API as GitAPI, Repository } from "./git.d";
 export class GitFileRenamer implements VCSFileRenamer {
   private api: GitAPI;
 
+  name: string = "Git";
+
   constructor(api: GitAPI) {
     this.api = api;
   }
@@ -22,7 +24,7 @@ export class GitFileRenamer implements VCSFileRenamer {
     const repo: Repository = this.api.getRepository(oldUri)!;
 
     // a Repository object doesn't expose a remove/delete method
-    await vscode.commands.executeCommand("git.stage", oldUri);
+    // await vscode.commands.executeCommand("git.stage", oldUri);
     await repo.add([newUri.fsPath]);
 
     await repo.commit(`Rename ${oldUri.path} -> ${newUri.path}`);
@@ -32,7 +34,7 @@ export class GitFileRenamer implements VCSFileRenamer {
     const repo: Repository = this.api.getRepository(kotlinUri)!;
 
     await repo.add([kotlinUri.fsPath]);
-    
+
     // maybe overkill
     // await repo.commit(`Convert ${kotlinUri.path} to Kotlin`);
   }

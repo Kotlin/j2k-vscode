@@ -24,10 +24,6 @@ function inDiff(editor: vscode.TextEditor | undefined): boolean {
     vscode.window.activeTextEditor.viewColumn === undefined &&
     vscode.window.activeTextEditor?.document.languageId === "kotlin";
 
-  console.log(vscode.window.activeTextEditor?.document?.uri.scheme);
-  console.log(vscode.window.activeTextEditor?.viewColumn);
-  console.log(vscode.window.activeTextEditor?.document?.languageId);
-
   return inDiff;
 }
 
@@ -40,9 +36,12 @@ export function activate(context: vscode.ExtensionContext) {
 
   // for general purpose logging
   const outputChannel = vscode.window.createOutputChannel("j2k-vscode");
+  outputChannel.appendLine("Output channel loaded");
 
   // to preserve VC history
   const vcsHandler: VCSFileRenamer = detectVCS();
+
+  outputChannel.appendLine(`VCS detected: ${vcsHandler.name}`);
 
   // accept/discard buttons for viewing the diff
   const acceptButton = vscode.window.createStatusBarItem(
@@ -110,14 +109,15 @@ export function activate(context: vscode.ExtensionContext) {
       // rename the java file to .kt file extension to preserve commit
       // history, then commit
 
-      vcsHandler.renameAndCommit(javaUri, kotlinReplacement);
+      // await vcsHandler.renameAndCommit(javaUri, kotlinReplacement);
 
       // write the kotlin file, then delete the old java file
       await vscode.workspace.fs.writeFile(
         kotlinReplacement,
         Buffer.from(replacementCode, "utf-8"),
       );
-      await vscode.workspace.fs.delete(javaUri);
+
+      // await vcsHandler.stageConversionReplacement(kotlinReplacement);
 
       // tidy up any changed state
       await vscode.commands.executeCommand(

@@ -22,8 +22,10 @@ export class GitFileRenamer implements VCSFileRenamer {
 
   async renameAndCommit(oldUri: vscode.Uri, newUri: vscode.Uri): Promise<void> {
     await vscode.workspace.fs.rename(oldUri, newUri);
-    
-    this.channel.appendLine(`GitFileRenamer: Renamed file ${oldUri} to ${newUri}`);
+
+    this.channel.appendLine(
+      `GitFileRenamer: Renamed file ${oldUri} to ${newUri}`,
+    );
 
     const repo: Repository = this.api.getRepository(oldUri)!;
 
@@ -31,10 +33,12 @@ export class GitFileRenamer implements VCSFileRenamer {
     await vscode.commands.executeCommand("git.stage", oldUri);
     await repo.add([newUri.fsPath]);
 
-    this.channel.appendLine(`GitFileRenamer: Staged the rename as a deletion and addition`);
+    this.channel.appendLine(
+      `GitFileRenamer: Staged the rename as a deletion and addition`,
+    );
 
     await repo.commit(`Rename ${oldUri.path} -> ${newUri.path}`);
-    
+
     this.channel.appendLine(`GitFileRenamer: Committed the rename`);
   }
 
@@ -43,11 +47,13 @@ export class GitFileRenamer implements VCSFileRenamer {
 
     await repo.add([kotlinUri.fsPath]);
 
-    this.channel.appendLine(`GitFileRenamer: Staged the replacement of Java code with Kotlin`);
+    this.channel.appendLine(
+      `GitFileRenamer: Staged the replacement of Java code with Kotlin`,
+    );
 
     // maybe overkill
     await repo.commit(`Convert ${kotlinUri.path} to Kotlin`);
-    
+
     this.channel.appendLine(`GitFileRenamer: Committed the Kotlin replacement`);
   }
 }

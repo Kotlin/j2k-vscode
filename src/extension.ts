@@ -3,6 +3,7 @@ import * as assert from "assert";
 import * as path from "path";
 
 import { convertToKotlin } from "./converter";
+import { detectVCS, VCSFileRenamer } from "./vcs";
 
 // larger numbers mean closer to the StatusBarAlignment:
 // we put Cancel immediately to the left of Accept
@@ -23,14 +24,10 @@ function inDiff(editor: vscode.TextEditor | undefined): boolean {
     vscode.window.activeTextEditor.viewColumn === undefined &&
     vscode.window.activeTextEditor?.document.languageId === "kotlin";
 
-  console.log(vscode.window.activeTextEditor?.document?.uri.scheme);
-  console.log(vscode.window.activeTextEditor?.viewColumn);
-  console.log(vscode.window.activeTextEditor?.document?.languageId);
-
   return inDiff;
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
   // so that we don't have to discover open workspaces when accepting/rejecting,
   // we convey this state between the convert command
   // and the accept/cancel commands
@@ -39,6 +36,10 @@ export function activate(context: vscode.ExtensionContext) {
 
   // for general purpose logging
   const outputChannel = vscode.window.createOutputChannel("j2k-vscode");
+  outputChannel.appendLine("Output channel loaded");
+
+  // to preserve VC history, lazy load vcsHandler
+  let vcsHandler: VCSFileRenamer;
 
   // accept/discard buttons for viewing the diff
   const acceptButton = vscode.window.createStatusBarItem(
@@ -62,6 +63,9 @@ export function activate(context: vscode.ExtensionContext) {
     async (uri: vscode.Uri) => {
       outputChannel.appendLine(`Converting ${uri.fsPath}`);
 
+      vcsHandler = await detectVCS(outputChannel);
+      outputChannel.appendLine(`VCS detected: ${vcsHandler.name}`);
+
       const javaBuf = await vscode.workspace.openTextDocument(uri);
       const javaCode = javaBuf.getText();
       javaUri = uri;
@@ -83,7 +87,7 @@ export function activate(context: vscode.ExtensionContext) {
       outputChannel.appendLine("Java to Kotlin Preview ready");
     },
   );
-  
+
   const acceptAndReplace = vscode.commands.registerCommand(
     "j2k.acceptAndReplaceConversion",
     async () => {
@@ -103,21 +107,34 @@ export function activate(context: vscode.ExtensionContext) {
 
       const kotlinReplacement = vscode.Uri.file(newPath);
 
+      // rename the java file to .kt file extension to preserve commit
+      // history, then commit
+
+      await vcsHandler.renameAndCommit(javaUri, kotlinReplacement);
+
       // write the kotlin file, then delete the old java file
-      await vscode.workspace.fs.writeFile(kotlinReplacement, Buffer.from(replacementCode, "utf-8"));
-      await vscode.workspace.fs.delete(javaUri);
+      await vscode.workspace.fs.writeFile(
+        kotlinReplacement,
+        Buffer.from(replacementCode, "utf-8"),
+      );
+
+      await vcsHandler.stageConversionReplacement(kotlinReplacement);
 
       // tidy up any changed state
-      await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
-    }
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor",
+      );
+    },
   );
 
   const cancelAndDiscard = vscode.commands.registerCommand(
     "j2k.cancelConversion",
     async () => {
       // tidy up any changed state
-      await vscode.commands.executeCommand("workbench.action.revertAndCloseActiveEditor");
-    }
+      await vscode.commands.executeCommand(
+        "workbench.action.revertAndCloseActiveEditor",
+      );
+    },
   );
 
   context.subscriptions.push(convertFile, acceptAndReplace, cancelAndDiscard);

@@ -1,16 +1,26 @@
-# j2k-vscode README
+# j2k-vscode
 
-This is the README for your extension "j2k-vscode". After writing up a brief description, we recommend including the following sections.
+An extension which provides one-click, review-before-you-commit Java to Kotlin migration inside VS Code
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+### Convert to Kotlin
 
-For example if there is an image subfolder under your extension project workspace:
+Right click a `.java` file, or run J2K: Convert to Kotlin from the Command Palette.
 
-\!\[feature X\]\(images/feature-x.png\)
+### Instant diff preview
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+A side-by-side diff opens so you can review and edit the generated Kotlin before saving changes.
+
+### Accept and Cancel
+
+Accept the changes to replace the Java file with its Kotlin replacement, or cancel to close the preview with no changes.
+
+### Version-control integration
+
+Commit the conversion as a rename and modification which keeps commit history intact. Currently supported version control software: Git
+
+# END OF UPDATED REGION
 
 ## Requirements
 

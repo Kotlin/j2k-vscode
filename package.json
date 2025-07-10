@@ -18,15 +18,28 @@
     "commands": [
       {
         "command": "j2k.convertFile",
-        "title": "J2K: Convert to Kotlin"
+        "title": "Convert to Kotlin",
+        "category": "J2K"
       },
       {
         "command": "j2k.acceptAndReplaceConversion",
-        "title": "J2K: Accept Conversion and Replace"
+        "title": "Accept Conversion and Replace",
+        "category": "J2K"
+      },
+      {
+        "command": "j2k.acceptFromToolbar",
+        "title": "Accept Conversion and Replace",
+        "category": "J2K"
       },
       {
         "command": "j2k.cancelConversion",
-        "title": "J2K: Cancel Conversion"
+        "title": "Cancel Conversion",
+        "category": "J2K"
+      },
+      {
+        "command": "j2k.cancelFromToolbar",
+        "title": "Cancel Conversion",
+        "category": "J2K"
       }
     ],
     "menus": {
@@ -35,6 +48,28 @@
           "command": "j2k.convertFile",
           "when": "resourceExtname == .java",
           "group": "navigation"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "j2k.acceptFromToolbar",
+          "group": "navigation@1",
+          "when": "inDiffEditor && j2k.diffActive"
+        },
+        {
+          "command": "j2k.cancelFromToolbar",
+          "group": "navigation@2",
+          "when": "inDiffEditor && j2k.diffActive"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "j2k.acceptFromToolbar",
+          "when": "false"
+        },
+        {
+          "command": "j2k.cancelFromToolbar",
+          "when": "false"
         }
       ]
     },

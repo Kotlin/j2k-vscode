@@ -12,7 +12,9 @@
   "activationEvents": [
     "onLanguage:java"
   ],
-  "extensionDependencies": ["vscode.git"],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
@@ -104,6 +106,7 @@
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.101.0",
     "@typescript-eslint/eslint-plugin": "^8.35.1",
     "@typescript-eslint/parser": "^8.35.1",
@@ -115,6 +118,7 @@
     "eslint-plugin-prettier": "^5.5.1",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.6.2",
+    "sinon": "^21.0.0",
     "typescript": "^5.8.3"
   }
 }

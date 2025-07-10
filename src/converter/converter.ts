@@ -1,7 +1,43 @@
-export function convertToKotlin(javaCode: string) {
+import { ChatOllama } from "@langchain/ollama";
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { RunnableSequence } from "@langchain/core/runnables";
+
+const model = new ChatOllama({
+  baseUrl: "http://localhost:11434",
+  model: "llama3",
+  temperature: 0
+});
+
+async function convertUsingOllama(javaCode: string) {
+  const systemPrompt: string = `
+Translate the given Java code to Kotlin.
+Return only the translated Kotlin code, no extra comments.
+`.trim();
+
+  const prompt = ChatPromptTemplate.fromMessages([
+    ["system", systemPrompt],
+    ["human", [
+      "Java source code we want to translate.\n",
+      "{javaCode}"
+    ].join("")],
+  ]);
+
+  const chain = RunnableSequence.from([
+    prompt,
+    model,
+    (msg: any) => (typeof msg === "string" ? msg : msg.content as string),
+  ]);
+
+  return chain.invoke({ javaCode });
+}
+
+export async function convertToKotlin(javaCode: string): Promise<string> {
   // TODO: convert using REST API
 
   // return 'fun main() {\n  println("Hello World")\n}';
+
+  return await convertUsingOllama(javaCode);
 
   return `package com.devtiro.database.controllers
 

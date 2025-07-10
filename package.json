@@ -120,5 +120,10 @@
     "prettier": "^3.6.2",
     "sinon": "^21.0.0",
     "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "@langchain/core": "^0.3.62",
+    "@langchain/ollama": "^0.2.3",
+    "langchain": "^0.3.29"
   }
 }

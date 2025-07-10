@@ -12,7 +12,9 @@
   "activationEvents": [
     "onLanguage:java"
   ],
-  "extensionDependencies": ["vscode.git"],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [

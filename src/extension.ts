@@ -5,13 +5,6 @@ import * as path from "path";
 import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
 
-// larger numbers mean closer to the StatusBarAlignment:
-// we put Cancel immediately to the left of Accept
-const StatusBarPriorities = {
-  ACCEPT: 100,
-  CANCEL: 99,
-} as const;
-
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
   if (!editor) {
     return false;
@@ -40,23 +33,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // to preserve VC history, lazy load vcsHandler
   let vcsHandler: VCSFileRenamer;
-
-  // accept/discard buttons for viewing the diff
-  const acceptButton = vscode.window.createStatusBarItem(
-    vscode.StatusBarAlignment.Right,
-    StatusBarPriorities.ACCEPT,
-  );
-  acceptButton.text = "(J2K Conversion) Accept and Replace";
-  acceptButton.command = "j2k.acceptAndReplaceConversion";
-
-  const cancelButton = vscode.window.createStatusBarItem(
-    vscode.StatusBarAlignment.Right,
-    StatusBarPriorities.CANCEL,
-  );
-  cancelButton.text = "(J2K Conversion) Cancel";
-  cancelButton.command = "j2k.cancelConversion";
-
-  context.subscriptions.push(acceptButton, cancelButton);
 
   const convertFile = vscode.commands.registerCommand(
     "j2k.convertFile",
@@ -142,14 +118,25 @@ export async function activate(context: vscode.ExtensionContext) {
   // only show our buttons when we are actively in the diff editor
   vscode.window.onDidChangeActiveTextEditor(
     (editor: vscode.TextEditor | undefined) => {
-      if (inDiff(editor)) {
-        acceptButton.show();
-        cancelButton.show();
-      } else {
-        acceptButton.hide();
-        cancelButton.hide();
-      }
+      vscode.commands.executeCommand(
+        "setContext",
+        "j2k.diffActive",
+        inDiff(editor),
+      );
     },
+  );
+
+  // to register bigger, bolder commands from editor/title,
+  // the toolbar automatically detects keybinds to render below
+  // the title. therefore we create aliases which do not have
+  // keybinds
+  context.subscriptions.push(
+    vscode.commands.registerCommand("j2k.acceptFromToolbar", () =>
+      vscode.commands.executeCommand("j2k.acceptAndReplaceConversion"),
+    ),
+    vscode.commands.registerCommand("j2k.cancelFromToolbar", () =>
+      vscode.commands.executeCommand("j2k.cancelConversion"),
+    ),
   );
 }
 

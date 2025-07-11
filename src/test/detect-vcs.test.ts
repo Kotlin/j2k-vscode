@@ -12,7 +12,7 @@ interface FakeGitAPI {
 
 function makeFakeGitExt(sandbox: sinon.SinonSandbox): vscode.Extension<any> {
   const fakeApi: FakeGitAPI = {
-    repositories: [{}]
+    repositories: [{}],
   };
 
   const fakeExports = {
@@ -22,21 +22,23 @@ function makeFakeGitExt(sandbox: sinon.SinonSandbox): vscode.Extension<any> {
 
   return {
     exports: fakeExports,
-    activate: sandbox.stub().resolves(fakeExports)
+    activate: sandbox.stub().resolves(fakeExports),
   } as any as vscode.Extension<any>;
 }
 
 suite("detectVCS()", () => {
   let sandbox: sinon.SinonSandbox;
 
-  setup(() => sandbox = sinon.createSandbox());
+  setup(() => (sandbox = sinon.createSandbox()));
   teardown(() => sandbox.restore());
 
   test("returns GitFileRenamer when Git extension and repos present", async () => {
-    sandbox.stub(extensions, "getExtension").returns(makeFakeGitExt(sandbox) as any);
+    sandbox
+      .stub(extensions, "getExtension")
+      .returns(makeFakeGitExt(sandbox) as any);
 
     const fakeChannel = {
-      appendLine: () => { }
+      appendLine: () => {},
     } as any as vscode.OutputChannel;
 
     const renamer = await detectVCS(fakeChannel);
@@ -47,7 +49,7 @@ suite("detectVCS()", () => {
     sandbox.stub(extensions, "getExtension").returns(undefined);
 
     const fakeChannel = {
-      appendLine: () => { }
+      appendLine: () => {},
     } as any as vscode.OutputChannel;
 
     const renamer = await detectVCS(fakeChannel);

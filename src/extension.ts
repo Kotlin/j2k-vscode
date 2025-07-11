@@ -46,7 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const javaCode = javaBuf.getText();
       javaUri = uri;
 
-      const kotlinCode = await convertToKotlin(javaCode);
+      const kotlinCode = await convertToKotlin(javaCode, outputChannel);
       const kotlinBuf = await vscode.workspace.openTextDocument({
         language: "kotlin",
         content: kotlinCode,

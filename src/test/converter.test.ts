@@ -10,6 +10,7 @@ suite("convertToKotlin()", () => {
 
   test("returns non-empty Kotlin snippet", async () => {
     const kotlin = await convertToKotlin(javaHelloWorld);
+    console.log(kotlin);
 
     assert.ok(kotlin.length > 0, "result should not be empty");
     // more tests when convertToKotlin isn't purely stubbed out

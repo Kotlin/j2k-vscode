@@ -101,7 +101,8 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "format": "prettier --write src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "release": "ts-node scripts/release.ts"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
@@ -124,6 +125,7 @@
   "dependencies": {
     "@langchain/core": "^0.3.62",
     "@langchain/ollama": "^0.2.3",
+    "@vscode/vsce": "^3.6.0",
     "langchain": "^0.3.29"
   }
 }

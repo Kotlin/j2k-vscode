@@ -1,4 +1,5 @@
 {
+	"exclude": ["scripts"],
 	"compilerOptions": {
 		"module": "NodeNext",
 		"target": "ES2022",

@@ -1,14 +1,11 @@
 import * as vscode from "vscode";
 import { VCSFileRenamer } from ".";
+import * as path from "path";
 
 // note: not many reliable docs on the git api that vscode exposes
 // this comes from https://github.com/microsoft/vscode/tree/main/extensions/git
 import type { GitExtension, API as GitAPI, Repository } from "./git.d";
 
-// since the extension only has access to a GitFileRenamer if
-// more than 0 repositories are detected, we know that there's
-// at least one repository open - we can therefore ignore the case
-// of 0 repositories
 export class GitFileRenamer implements VCSFileRenamer {
   private api: GitAPI;
   private channel: vscode.OutputChannel;
@@ -23,8 +20,11 @@ export class GitFileRenamer implements VCSFileRenamer {
   async renameAndCommit(oldUri: vscode.Uri, newUri: vscode.Uri): Promise<void> {
     await vscode.workspace.fs.rename(oldUri, newUri);
 
+    const oldName = path.basename(oldUri.fsPath);
+    const newName = path.basename(newUri.fsPath);
+
     this.channel.appendLine(
-      `GitFileRenamer: Renamed file ${oldUri} to ${newUri}`,
+      `GitFileRenamer: Renamed file ${newName} to ${newName}`,
     );
 
     const repo: Repository = this.api.getRepository(oldUri)!;
@@ -37,7 +37,7 @@ export class GitFileRenamer implements VCSFileRenamer {
       `GitFileRenamer: Staged the rename as a deletion and addition`,
     );
 
-    await repo.commit(`Rename ${oldUri.path} -> ${newUri.path}`);
+    await repo.commit(`Rename ${oldName} -> ${newName}`);
 
     this.channel.appendLine(`GitFileRenamer: Committed the rename`);
   }
@@ -52,7 +52,7 @@ export class GitFileRenamer implements VCSFileRenamer {
     );
 
     // maybe overkill
-    await repo.commit(`Convert ${kotlinUri.path} to Kotlin`);
+    await repo.commit(`Convert ${path.basename(kotlinUri.fsPath)} to Kotlin`);
 
     this.channel.appendLine(`GitFileRenamer: Committed the Kotlin replacement`);
   }

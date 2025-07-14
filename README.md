@@ -20,12 +20,6 @@ Accept the changes to replace the Java file with its Kotlin replacement, or canc
 
 Commit the conversion as a rename and modification which keeps commit history intact. Currently supported version control software: Git
 
-# END OF UPDATED REGION
-
-## Requirements
-
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
-
 ## Extension Settings
 
 This extension contributes the following settings:
@@ -34,6 +28,8 @@ This extension contributes the following settings:
 * `j2k.model`: The model tag to use with the selected provider.
 * `j2k.ollama.baseUrl`: The base URL of the target instance, when the provider selected is Ollama.
 * `j2k.openRouter.baseUrl`: The base URL of the target instance, when the provider selected is OpenRouter.
+
+# END OF UPDATED REGION
 
 ## Known Issues
 

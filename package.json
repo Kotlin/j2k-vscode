@@ -46,6 +46,11 @@
         "command": "j2k.cancelFromToolbar",
         "title": "Cancel Conversion",
         "category": "J2K"
+      },
+      {
+        "command": "j2k.setApiKey",
+        "title": "Set API Key",
+        "category": "J2K"
       }
     ],
     "menus": {
@@ -90,7 +95,37 @@
         "command": "j2k.cancelConversion",
         "when": "inDiffEditor && editorLangId == kotlin && resourceScheme == untitled"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Java to Kotlin converter",
+      "properties": {
+        "j2k.provider": {
+          "type": "string",
+          "enum": [
+            "local-ollama",
+            "openrouter",
+            "openai"
+          ],
+          "default": "local-ollama",
+          "description": "Which LLM backend to use for Java to Kotlin conversion."
+        },
+        "j2k.model": {
+          "type": "string",
+          "default": "codellama:instruct",
+          "description": "Model tag accepted by the selected provider."
+        },
+        "j2k.ollama.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "The base URL of the target Ollama instance."
+        },
+        "j2k.openRouter.baseUrl": {
+          "type": "string",
+          "default": "https://openrouter.ai/api/v1",
+          "description": "The base URL of the target OpenRouter instance - only override if self-hosted."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -133,6 +168,7 @@
   "dependencies": {
     "@langchain/core": "^0.3.62",
     "@langchain/ollama": "^0.2.3",
+    "@langchain/openai": "^0.5.18",
     "langchain": "^0.3.29"
   }
 }

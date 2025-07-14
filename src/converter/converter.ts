@@ -11,22 +11,25 @@ async function makeModel(context: vscode.ExtensionContext) {
   const model = cfg.get<string>("model", "codellama:instruct");
   const provider = cfg.get<string>("provider", "local-ollama");
 
-  const apiKey = await context.secrets.get("j2k.apiKey") ?? "";
+  const apiKey = (await context.secrets.get("j2k.apiKey")) ?? "";
 
   switch (provider) {
     case "local-ollama":
       return new ChatOllama({
         baseUrl: cfg.get<string>("ollama.baseUrl", "http://localhost:11434"),
         model: model,
-        temperature: 0
+        temperature: 0,
       });
     case "openrouter":
       return new ChatOpenAI({
         model: model,
         apiKey: apiKey,
         configuration: {
-          baseURL: cfg.get<string>("openRouter.baseUrl", "https://openrouter.ai/api/v1")
-        }
+          baseURL: cfg.get<string>(
+            "openRouter.baseUrl",
+            "https://openrouter.ai/api/v1",
+          ),
+        },
       });
     case "openai":
       return new ChatOpenAI({
@@ -77,7 +80,7 @@ Return only the translated Kotlin code, no extra comments.
 export async function convertToKotlin(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
-  context: vscode.ExtensionContext
+  context: vscode.ExtensionContext,
 ): Promise<string> {
   return await convertUsingLLM(javaCode, outputChannel, context);
 }

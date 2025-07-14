@@ -96,8 +96,8 @@ Return only the translated Kotlin code, no extra comments.
       outputChannel.appendLine("convertUsingLLM: Starting LLM stream");
 
       for await (const chunk of await chain.stream({ javaCode })) {
-        const delta: string =
-          typeof chunk === "string" ? chunk : (chunk.content as string);
+        const delta: string = 
+          (typeof chunk === "string") ? (chunk) : (chunk.content as string);
         buf += delta;
         tokens += 1;
 

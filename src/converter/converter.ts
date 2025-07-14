@@ -36,6 +36,11 @@ function makeModel() {
   }
 }
 
+function countTokens(text: string) {
+  // using that 1 token is approximately 4 chars
+  return Math.ceil(text.length / 4);
+}
+
 async function convertUsingLLM(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
@@ -58,17 +63,50 @@ Return only the translated Kotlin code, no extra comments.
 
   const chain = RunnableSequence.from([
     prompt,
-    model,
-    (msg: any) => (typeof msg === "string" ? msg : (msg.content as string)),
+    model
   ]);
 
   outputChannel.appendLine(
     "convertUsingLLM: Prompt invoked, waiting for response",
   );
-  const res = await chain.invoke({ javaCode });
-  outputChannel.appendLine("convertUsingLLM: Response received");
 
-  return res;
+  return await vscode.window.withProgress({
+    location: vscode.ProgressLocation.Notification,
+    title: "J2K: Translating...",
+    cancellable: false
+  },
+  async (progress) => {
+    let generated = 0;
+    let output = "";
+
+    // assume that a kotlin file will be 95% the size of the corresponding
+    // java file due to having cleaner syntax but also inefficiencies
+    // with the conversion
+    let upperBound = Math.ceil(countTokens(javaCode) * 0.95);
+    let lastPercentage = 0;
+
+    for await (const chunk of await chain.stream({ javaCode })) {
+      const delta: string = typeof chunk === "string" ? chunk : (chunk.content as string);
+      output += delta;
+      generated += countTokens(delta);
+      
+      // never let the percentage hit more than 100
+      const percentage = Math.min((generated / upperBound) * 100, 99);
+
+      progress.report({
+        increment: percentage - lastPercentage,
+        message: `${percentage.toFixed(0)}%`
+      });
+      lastPercentage = percentage;
+    }
+
+    progress.report({
+      increment: 100 - lastPercentage,
+      message: "LLM response received"
+    });
+
+    return output;
+  });
 }
 
 export async function convertToKotlin(

@@ -28,14 +28,12 @@ If you have any requirements or dependencies, add a section describing those and
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+* `j2k.provider`: The LLM backend to use for the Java to Kotlin conversion.
+* `j2k.model`: The model tag to use with the selected provider.
+* `j2k.ollama.baseUrl`: The base URL of the target instance, when the provider selected is Ollama.
+* `j2k.openRouter.baseUrl`: The base URL of the target instance, when the provider selected is OpenRouter.
 
 ## Known Issues
 

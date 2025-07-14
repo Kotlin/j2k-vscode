@@ -50,6 +50,7 @@ async function convertUsingLLM(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
   context: vscode.ExtensionContext,
+  editor: vscode.TextEditor,
 ) {
   const model = await makeModel(context);
   outputChannel.appendLine(`convertUsingLLM: Using model ${model.model}`);
@@ -67,58 +68,80 @@ Return only the translated Kotlin code, no extra comments.
     ],
   ]);
 
-  const chain = RunnableSequence.from([
-    prompt,
-    model
-  ]);
+  const chain = RunnableSequence.from([prompt, model]);
 
   outputChannel.appendLine(
     "convertUsingLLM: Prompt invoked, waiting for response",
   );
 
-  return await vscode.window.withProgress({
-    location: vscode.ProgressLocation.Notification,
-    title: "J2K: Translating...",
-    cancellable: false
-  },
-  async (progress) => {
-    let generated = 0;
-    let output = "";
+  return await vscode.window.withProgress(
+    {
+      location: vscode.ProgressLocation.Notification,
+      title: "J2K: Translating...",
+      cancellable: false,
+    },
+    async (progress) => {
+      let generated = 0;
 
-    // assume that a kotlin file will be 95% the size of the corresponding
-    // java file due to having cleaner syntax but also inefficiencies
-    // with the conversion
-    let upperBound = Math.ceil(countTokens(javaCode) * 0.95);
-    let lastPercentage = 0;
+      // assume that a kotlin file will be 95% the size of the corresponding
+      // java file due to having cleaner syntax but also inefficiencies
+      // with the conversion
+      let upperBound = Math.ceil(countTokens(javaCode) * 0.95);
+      let lastPercentage = 0;
 
-    for await (const chunk of await chain.stream({ javaCode })) {
-      const delta: string = typeof chunk === "string" ? chunk : (chunk.content as string);
-      output += delta;
-      generated += countTokens(delta);
-      
-      // never let the percentage hit more than 100
-      const percentage = Math.min((generated / upperBound) * 100, 99);
+      let buf = "";
+      let tokens = 0;
+      let TOKENS_PER_FLUSH = 20;
+
+      outputChannel.appendLine("convertUsingLLM: Starting LLM stream");
+
+      for await (const chunk of await chain.stream({ javaCode })) {
+        const delta: string =
+          typeof chunk === "string" ? chunk : (chunk.content as string);
+        buf += delta;
+        tokens += 1;
+
+        // flush
+        if (buf.includes("\n") || tokens >= TOKENS_PER_FLUSH) {
+          await editor.edit(
+            (eb) =>
+              eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),
+            { undoStopBefore: false, undoStopAfter: false },
+          );
+
+          // reset buffer
+          buf = "";
+          tokens = 0;
+        }
+
+        generated += countTokens(delta);
+
+        // never let the percentage hit more than 100
+        const percentage = Math.min((generated / upperBound) * 100, 99);
+
+        progress.report({
+          increment: percentage - lastPercentage,
+          message: `${percentage.toFixed(0)}%`,
+        });
+        lastPercentage = percentage;
+      }
 
       progress.report({
-        increment: percentage - lastPercentage,
-        message: `${percentage.toFixed(0)}%`
+        increment: 100 - lastPercentage,
+        message: "LLM response received",
       });
-      lastPercentage = percentage;
-    }
 
-    progress.report({
-      increment: 100 - lastPercentage,
-      message: "LLM response received"
-    });
-
-    return output;
-  });
+      // suppress string return in case future code will want to return the string
+      return "";
+    },
+  );
 }
 
 export async function convertToKotlin(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
   context: vscode.ExtensionContext,
+  editor: vscode.TextEditor,
 ): Promise<string> {
-  return await convertUsingLLM(javaCode, outputChannel, context);
+  return await convertUsingLLM(javaCode, outputChannel, context, editor);
 }

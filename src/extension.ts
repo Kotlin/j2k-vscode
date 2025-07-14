@@ -46,14 +46,9 @@ export async function activate(context: vscode.ExtensionContext) {
       const javaCode = javaBuf.getText();
       javaUri = uri;
 
-      const kotlinCode = await convertToKotlin(
-        javaCode,
-        outputChannel,
-        context,
-      );
       const kotlinBuf = await vscode.workspace.openTextDocument({
         language: "kotlin",
-        content: kotlinCode,
+        content: "",
       });
       kotlinUri = kotlinBuf.uri;
 
@@ -63,6 +58,12 @@ export async function activate(context: vscode.ExtensionContext) {
         kotlinBuf.uri,
         "Java to Kotlin Preview",
       );
+
+      const kotlinEditor = vscode.window.visibleTextEditors.find(
+        (e) => e.document === kotlinBuf,
+      )!;
+
+      await convertToKotlin(javaCode, outputChannel, context, kotlinEditor);
 
       outputChannel.appendLine("Java to Kotlin Preview ready");
     },

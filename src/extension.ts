@@ -46,7 +46,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const javaCode = javaBuf.getText();
       javaUri = uri;
 
-      const kotlinCode = await convertToKotlin(javaCode, outputChannel);
+      const kotlinCode = await convertToKotlin(javaCode, outputChannel, context);
       const kotlinBuf = await vscode.workspace.openTextDocument({
         language: "kotlin",
         content: kotlinCode,
@@ -137,6 +137,26 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("j2k.cancelFromToolbar", () =>
       vscode.commands.executeCommand("j2k.cancelConversion"),
     ),
+  );
+
+  // api key storage
+  context.subscriptions.push(
+    vscode.commands.registerCommand("j2k.setApiKey", async () => {
+      const key = await vscode.window.showInputBox({
+        prompt: "Enter your LLM API key",
+        password: true,
+        ignoreFocusOut: true
+      });
+
+      if (key) {
+        await context.secrets.store("j2k.apiKey", key);
+        vscode.window.showInformationMessage(
+          "LLM API key saved to VS Code secure storage."
+        );
+
+        outputChannel.appendLine("LLM API key saved to VS Code secure storage.")
+      }
+    }),
   );
 }
 

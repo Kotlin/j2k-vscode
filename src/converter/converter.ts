@@ -5,11 +5,13 @@ import { RunnableSequence } from "@langchain/core/runnables";
 
 import * as vscode from "vscode";
 
-function makeModel() {
+async function makeModel(context: vscode.ExtensionContext) {
   const cfg = vscode.workspace.getConfiguration("j2k");
 
   const model = cfg.get<string>("model", "codellama:instruct");
   const provider = cfg.get<string>("provider", "local-ollama");
+
+  const apiKey = await context.secrets.get("j2k.apiKey") ?? "";
 
   switch (provider) {
     case "local-ollama":
@@ -21,7 +23,7 @@ function makeModel() {
     case "openrouter":
       return new ChatOpenAI({
         model: model,
-        apiKey: "TODO: unsupported",
+        apiKey: apiKey,
         configuration: {
           baseURL: cfg.get<string>("openRouter.baseUrl", "https://openrouter.ai/api/v1")
         }
@@ -29,7 +31,7 @@ function makeModel() {
     case "openai":
       return new ChatOpenAI({
         model: model,
-        apiKey: "TODO: unsupported",
+        apiKey: apiKey,
       });
     default:
       throw new Error(`J2K: unknown provider ${provider}`);
@@ -39,8 +41,9 @@ function makeModel() {
 async function convertUsingLLM(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
+  context: vscode.ExtensionContext,
 ) {
-  const model = makeModel();
+  const model = await makeModel(context);
   outputChannel.appendLine(`convertUsingLLM: Using model ${model.model}`);
 
   const systemPrompt: string = `
@@ -74,6 +77,7 @@ Return only the translated Kotlin code, no extra comments.
 export async function convertToKotlin(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
+  context: vscode.ExtensionContext
 ): Promise<string> {
-  return await convertUsingLLM(javaCode, outputChannel);
+  return await convertUsingLLM(javaCode, outputChannel, context);
 }

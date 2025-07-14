@@ -46,6 +46,11 @@
         "command": "j2k.cancelFromToolbar",
         "title": "Cancel Conversion",
         "category": "J2K"
+      },
+      {
+        "command": "j2k.setApiKey",
+        "title": "Set API Key",
+        "category": "J2K"
       }
     ],
     "menus": {

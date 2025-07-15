@@ -58,6 +58,7 @@ async function convertUsingLLM(
   const systemPrompt: string = `
 Translate the given Java code to Kotlin.
 Return only the translated Kotlin code, no extra comments.
+Enclose the code within <code> XML tags.
 `.trim();
 
   const prompt = ChatPromptTemplate.fromMessages([

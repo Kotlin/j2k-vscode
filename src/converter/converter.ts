@@ -95,7 +95,7 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
       let tokens = 0;
       let TOKENS_PER_FLUSH = 20;
 
-      let insideCode = true;
+      let insideCode = false;
 
       outputChannel.appendLine("convertUsingLLM: Starting LLM stream");
 
@@ -131,7 +131,7 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
           });
           lastPercentage = percentage;
         } else {
-          const tagPosition = buf.indexOf("<<START_J2K>>");
+          const tagPosition = buf.indexOf("<<START_J2K>>\n");
 
           if (tagPosition === -1) {
             continue;
@@ -147,6 +147,10 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
         }
       }
 
+      // final flush of the buffer for the last tokens, but additionally,
+      // if no sentinel token was found, we flush the entire buffer to
+      // output the full LLM response instead of leaving the user with
+      // nothing.
       if (buf.length) {
         await editor.edit(
           (eb) => eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),

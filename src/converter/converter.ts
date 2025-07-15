@@ -58,7 +58,8 @@ async function convertUsingLLM(
   const systemPrompt: string = `
 Translate the given Java code to Kotlin.
 Return only the translated Kotlin code, no extra comments.
-Enclose the code within <code> XML tags.
+Return the code text after the following sentinel token, written exactly as <<START_J2K>>.
+After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labels or explanations.
 `.trim();
 
   const prompt = ChatPromptTemplate.fromMessages([
@@ -94,37 +95,63 @@ Enclose the code within <code> XML tags.
       let tokens = 0;
       let TOKENS_PER_FLUSH = 20;
 
+      let insideCode = true;
+
       outputChannel.appendLine("convertUsingLLM: Starting LLM stream");
 
       for await (const chunk of await chain.stream({ javaCode })) {
         const delta: string = 
           (typeof chunk === "string") ? (chunk) : (chunk.content as string);
         buf += delta;
-        tokens += 1;
+        
+        if (insideCode) {
+          tokens += 1;
 
-        // flush
-        if (buf.includes("\n") || tokens >= TOKENS_PER_FLUSH) {
-          await editor.edit(
-            (eb) =>
-              eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),
-            { undoStopBefore: false, undoStopAfter: false },
-          );
+          // flush
+          if (buf.includes("\n") || tokens >= TOKENS_PER_FLUSH) {
+            await editor.edit(
+              (eb) =>
+                eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),
+              { undoStopBefore: false, undoStopAfter: false },
+            );
 
-          // reset buffer
-          buf = "";
-          tokens = 0;
+            // reset buffer
+            buf = "";
+            tokens = 0;
+          }
+
+          generated += countTokens(delta);
+
+          // never let the percentage hit more than 100
+          const percentage = Math.min((generated / upperBound) * 100, 99);
+
+          progress.report({
+            increment: percentage - lastPercentage,
+            message: `${percentage.toFixed(0)}%`,
+          });
+          lastPercentage = percentage;
+        } else {
+          const tagPosition = buf.indexOf("<<START_J2K>>");
+
+          if (tagPosition === -1) {
+            continue;
+          }
+
+          // we are at the opening tag
+          outputChannel.appendLine("Code tag found");
+
+          insideCode = true;
+          tokens += 1;
+
+          buf = buf.slice(tagPosition + "<<START_J2K>>\n".length);
         }
+      }
 
-        generated += countTokens(delta);
-
-        // never let the percentage hit more than 100
-        const percentage = Math.min((generated / upperBound) * 100, 99);
-
-        progress.report({
-          increment: percentage - lastPercentage,
-          message: `${percentage.toFixed(0)}%`,
-        });
-        lastPercentage = percentage;
+      if (buf.length) {
+        await editor.edit(
+          (eb) => eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),
+          { undoStopBefore: false, undoStopAfter: false },
+        );
       }
 
       progress.report({

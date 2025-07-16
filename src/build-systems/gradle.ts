@@ -1,6 +1,5 @@
 import * as vscode from "vscode";
 import { JVMBuildSystem } from ".";
-import { text } from "stream/consumers";
 
 export class GradleBuildSystem implements JVMBuildSystem {
   name: string = "Gradle"

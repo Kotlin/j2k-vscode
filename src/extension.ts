@@ -4,6 +4,7 @@ import * as path from "path";
 
 import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
+import { detectBuildSystem, JVMBuildSystem } from "./build-systems";
 
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
   if (!editor) {
@@ -33,6 +34,24 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // to preserve VC history, lazy load vcsHandler
   let vcsHandler: VCSFileRenamer;
+  
+  const buildSystem = await detectBuildSystem();
+
+  if (await buildSystem.needsKotlin()) {
+    vscode.window.showInformationMessage(
+      "This project currently builds only Java. Would you like to add Kotlin support automatically?",
+      "Add Kotlin",
+      "Not now"
+    ).then(choice => {
+      if (choice !== "Add Kotlin") {
+        return;
+      }
+
+      buildSystem.enableKotlin().then(() => {
+        vscode.window.showInformationMessage(`Kotlin has been configured in your ${buildSystem.name} project.`);
+      });
+    });
+  }
 
   const convertFile = vscode.commands.registerCommand(
     "j2k.convertFile",

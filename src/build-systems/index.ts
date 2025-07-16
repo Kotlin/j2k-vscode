@@ -6,9 +6,9 @@ import { MavenBuildSystem } from "./maven";
 export interface JVMBuildSystem {
   name: string;
 
-  needsKotlin(folder: vscode.WorkspaceFolder): Promise<boolean>
+  needsKotlin(): Promise<boolean>
 
-  enableKotlin(folder: vscode.WorkspaceFolder): Promise<void>
+  enableKotlin(): Promise<void>
 }
 
 async function hasFile(folder: vscode.WorkspaceFolder, glob: string) {

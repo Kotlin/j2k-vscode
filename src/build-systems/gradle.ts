@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { JVMBuildSystem } from ".";
+import { text } from "stream/consumers";
 
 export class GradleBuildSystem implements JVMBuildSystem {
   name: string = "Gradle"
@@ -10,11 +11,26 @@ export class GradleBuildSystem implements JVMBuildSystem {
     this.workspaceFolder = folder;
   }
 
-  async needsKotlin(folder: vscode.WorkspaceFolder) {
-    return false;
+  private async getBuildFile() {
+    const [file] = await vscode.workspace.findFiles(
+      new vscode.RelativePattern(this.workspaceFolder, "{build.gradle,build.gradle.kts}"),
+      null,
+      1,
+    );
+
+    return file;
   }
 
-  async enableKotlin(folder: vscode.WorkspaceFolder) {
+  async needsKotlin() {
+    const uri = await this.getBuildFile();
+    if (!uri) return false;
+
+    const contents = (await vscode.workspace.openTextDocument(uri)).getText();
+
+    return !contents.includes("org.jetbrains.kotlin.jvm");
+  }
+
+  async enableKotlin() {
     
   }
 }

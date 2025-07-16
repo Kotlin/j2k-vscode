@@ -9,12 +9,27 @@ export class MavenBuildSystem implements JVMBuildSystem {
   constructor(folder: vscode.WorkspaceFolder) {
     this.workspaceFolder = folder;
   }
+  
+  private async getBuildFile() {
+    const [file] = await vscode.workspace.findFiles(
+      new vscode.RelativePattern(this.workspaceFolder, "pom.xml"),
+      null,
+      1,
+    );
 
-  async needsKotlin(folder: vscode.WorkspaceFolder) {
-    return false;
+    return file;
   }
 
-  async enableKotlin(folder: vscode.WorkspaceFolder) {
+  async needsKotlin() {
+    const uri = await this.getBuildFile();
+    if (!uri) return false;
+
+    const contents = (await vscode.workspace.openTextDocument(uri)).getText();
+
+    return !contents.includes("kotlin-maven-plugin");
+  }
+
+  async enableKotlin() {
     
   }
 }

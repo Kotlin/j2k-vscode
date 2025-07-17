@@ -11,32 +11,6 @@ export class GitFileRenamer implements VCSFileRenamer {
   private api: GitAPI;
   private channel: vscode.OutputChannel;
 
-  private async waitForRenameInIndex(
-    repo: Repository,
-    oldPath: string,
-    newPath: string,
-    retries = 20
-  ): Promise<void> {
-    for (let i = 0; i < retries; i++) {
-      const entry = repo.state.indexChanges.find(
-        c =>
-          c.status === Status.INDEX_RENAMED &&
-          c.originalUri.fsPath === oldPath &&
-          c.renameUri?.fsPath === newPath
-      );
-
-      if (entry) {
-        this.channel.appendLine("GitFileRenamer: Rename staged successfully");
-        return;
-      }
-
-      await new Promise(r => setTimeout(r, 50));
-    }
-
-    throw new Error("GitFileRenamer: Timed out waiting for Git to stage the rename");
-  }
-
-
   name: string = "Git";
 
   constructor(api: GitAPI, channel: vscode.OutputChannel) {
@@ -56,18 +30,7 @@ export class GitFileRenamer implements VCSFileRenamer {
 
     const repo: Repository = this.api.getRepository(oldUri)!;
 
-    // a Repository object doesn't expose a remove/delete method
-    await repo.add([oldUri.fsPath]);
-    await repo.add([newUri.fsPath]);
-
-    this.channel.appendLine(
-      `GitFileRenamer: Staged the rename as a deletion and addition`,
-    );
-
-    // wait to allow git to sync back up
-    // await this.waitForRenameInIndex(repo, oldUri.fsPath, newUri.fsPath);
-
-    await repo.commit(`Rename ${oldName} -> ${newName}`);
+    await repo.commit(`Rename ${oldName} -> ${newName}`, { all: true });
 
     this.channel.appendLine(`GitFileRenamer: Committed the rename`);
   }

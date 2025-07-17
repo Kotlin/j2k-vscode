@@ -4,7 +4,12 @@ import * as path from "path";
 
 // note: not many reliable docs on the git api that vscode exposes
 // this comes from https://github.com/microsoft/vscode/tree/main/extensions/git
-import { Status, type Change, type API as GitAPI, type Repository } from "./git.d";
+import {
+  Status,
+  type Change,
+  type API as GitAPI,
+  type Repository,
+} from "./git.d";
 
 export class GitFileRenamer implements VCSFileRenamer {
   private api: GitAPI;
@@ -31,9 +36,12 @@ export class GitFileRenamer implements VCSFileRenamer {
 
     await repo.status();
 
-    const deletionChange: Change | undefined = repo.state.workingTreeChanges.find(
-      change => change.status === Status.DELETED && change.uri.fsPath === oldUri.fsPath
-    );
+    const deletionChange: Change | undefined =
+      repo.state.workingTreeChanges.find(
+        (change) =>
+          change.status === Status.DELETED &&
+          change.uri.fsPath === oldUri.fsPath,
+      );
 
     if (deletionChange) {
       await repo.add([oldUri.fsPath]);

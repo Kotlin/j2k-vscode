@@ -4,8 +4,7 @@ import * as path from "path";
 
 // note: not many reliable docs on the git api that vscode exposes
 // this comes from https://github.com/microsoft/vscode/tree/main/extensions/git
-import type { API as GitAPI, Repository } from "./git.d";
-import { Status } from "./git.d";
+import { Status, type Change, type API as GitAPI, type Repository } from "./git.d";
 
 export class GitFileRenamer implements VCSFileRenamer {
   private api: GitAPI;
@@ -30,7 +29,21 @@ export class GitFileRenamer implements VCSFileRenamer {
 
     const repo: Repository = this.api.getRepository(oldUri)!;
 
-    await repo.commit(`Rename ${oldName} -> ${newName}`, { all: true });
+    await repo.status();
+
+    const deletionChange: Change | undefined = repo.state.workingTreeChanges.find(
+      change => change.status === Status.DELETED && change.uri.fsPath === oldUri.fsPath
+    );
+
+    if (deletionChange) {
+      await repo.add([oldUri.fsPath]);
+      this.channel.appendLine("GitFileRenamer: Staged deletion of old file");
+    }
+
+    await repo.add([newUri.fsPath]);
+    this.channel.appendLine("GitFileRenamer: Staged addition of new file");
+
+    await repo.commit(`Rename ${oldName} -> ${newName}`);
 
     this.channel.appendLine(`GitFileRenamer: Committed the rename`);
   }

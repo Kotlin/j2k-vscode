@@ -5,7 +5,6 @@ import * as path from "path";
 // note: not many reliable docs on the git api that vscode exposes
 // this comes from https://github.com/microsoft/vscode/tree/main/extensions/git
 import type { GitExtension, API as GitAPI, Repository } from "./git.d";
-import { error } from "console";
 
 export class GitFileRenamer implements VCSFileRenamer {
   private api: GitAPI;
@@ -14,7 +13,10 @@ export class GitFileRenamer implements VCSFileRenamer {
   private async waitForIndex(repo: Repository, wantedPaths: string[]): Promise<void> {
     for (let i = 0; i < 20; i++) {
       const indexedFiles = repo.state.indexChanges.map(c => c.uri.fsPath);
-      if (wantedPaths.every(p => indexedFiles.includes(p))) return;
+      if (wantedPaths.every(p => indexedFiles.includes(p))) {
+        this.channel.appendLine("GitFileRenamer: Staged changes registered by Git");
+        return;
+      }
 
       // files aren't yet in the index, wait 50ms
       // we have 20 iterations to wait up to max 1 second
@@ -67,6 +69,8 @@ export class GitFileRenamer implements VCSFileRenamer {
     this.channel.appendLine(
       `GitFileRenamer: Staged the replacement of Java code with Kotlin`,
     );
+
+    await this.waitForIndex(repo, [kotlinUri.fsPath]);
 
     // maybe overkill
     await repo.commit(`Convert ${path.basename(kotlinUri.fsPath)} to Kotlin`);

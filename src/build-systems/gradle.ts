@@ -19,14 +19,29 @@ export class GradleBuildSystem implements JVMBuildSystem {
 
     return file;
   }
+  
+  private stripComments(code: string) {
+    return code
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/.*$/gm, "");
+  }
 
   async needsKotlin() {
     const uri = await this.getBuildFile();
     if (!uri) return false;
 
-    const contents = (await vscode.workspace.openTextDocument(uri)).getText();
+    const contents = this.stripComments((await vscode.workspace.openTextDocument(uri)).getText());
 
-    return !contents.includes("org.jetbrains.kotlin.jvm");
+    const pluginPatterns: RegExp[] = [
+      // Kotlin‑DSL alias, e.g. kotlin("jvm") or kotlin("plugin.spring")
+      /\bkotlin\s*\(\s*["'][\w\-.+]+["']\s*\)/,
+      // Explicit plugin id, Groovy or Kotlin‑DSL
+      /\bid\s*\(\s*["']org\.jetbrains\.kotlin[^"']*["']\s*\)/,
+      /\bid\s+['"]org\.jetbrains\.kotlin[^'"]*['"]/,
+    ];
+    if (pluginPatterns.some(re => re.test(contents))) return false;
+
+    return true;
   }
 
   async enableKotlin() {

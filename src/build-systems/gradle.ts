@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
 import { JVMBuildSystem } from ".";
 
-const KOTLIN_VERSION = "2.2.0"
+const KOTLIN_VERSION = "2.2.0";
+const configureInPlaceReplacements = true;
 
 export class GradleBuildSystem implements JVMBuildSystem {
   name: string = "Gradle"
@@ -54,14 +55,15 @@ export class GradleBuildSystem implements JVMBuildSystem {
     
     const isKts = uri.fsPath.endsWith(".kts");
     const plugin = isKts ? `kotlin("jvm") version "${KOTLIN_VERSION}"` : `id 'org.jetbrains.kotlin.jvm' version '${KOTLIN_VERSION}'`;
-    const stdlib = isKts ? `implementation(kotlin("stdlib"))` : `implemetation "org.jetbrains.kotlin:kotlin-stdlib"`;
+    const stdlib = isKts ? `implementation(kotlin("stdlib"))` : `implementation "org.jetbrains.kotlin:kotlin-stdlib"`;
 
     const doc = await vscode.workspace.openTextDocument(uri);
     const text = doc.getText();
     
     let updated = text;
 
-    if (!/kotlin\("jvm"\)|org\.jetbrains\.kotlin\.jvm/.test(text)) {
+    const pluginsSeen = /kotlin\("jvm"\)|org\.jetbrains\.kotlin\.jvm/.test(text);
+    if (!pluginsSeen) {
       // no plugin found, insert it
 
       const pluginsBlock = /plugins\s*\{[\s\S]*?}/;
@@ -73,7 +75,8 @@ export class GradleBuildSystem implements JVMBuildSystem {
       }
     }
 
-    if (!/kotlin-stdlib/.test(updated)) {
+    const dependenciesSeen = /kotlin-stdlib|kotlin\(\s*["']stdlib["']\s*\)/.test(updated);
+    if (!dependenciesSeen) {
       // no dependency found
 
       const dependenciesBlock = /dependencies\s*\{[\s\S]*?}/;
@@ -84,14 +87,26 @@ export class GradleBuildSystem implements JVMBuildSystem {
       }
     }
 
+    const sourceDirectorySeen = /sourceSets\.(main|["']main["'])[^}]*\.kotlin\.srcDir/.test(updated);
+    if (configureInPlaceReplacements && !sourceDirectorySeen) {
+      const srcDirLines = isKts ? `    sourceSets["main"].kotlin.srcDir("src/main/java")
+    sourceSets["test"].kotlin.srcDir("src/test/java")` : `    sourceSets.main.kotlin.srcDirs += 'src/main/java'
+    sourceSets.test.kotlin.srcDirs += 'src/test/java'`;
+
+      const kotlinBlock = /kotlin\s*\{[\s\S]*?}/;
+      if (kotlinBlock.test(updated)) {
+        updated = updated.replace(
+          kotlinBlock,
+          m => m.replace("{", "{\n" + srcDirLines)
+        );
+      } else {
+        updated += `\n\nkotlin {\n${srcDirLines}\n}\n`;
+      }
+    }
+
     if (updated !== text) {
       const edit = new vscode.WorkspaceEdit();
-      edit.replace(uri, new vscode.Range(
-        0, // starting line
-        0, // starting character
-        doc.lineCount, // ending line
-        0 // ending character
-      ), updated);
+      edit.replace(uri, doc.lineAt(doc.lineCount - 1).rangeIncludingLineBreak, updated);
 
       await vscode.workspace.applyEdit(edit);
       await doc.save();

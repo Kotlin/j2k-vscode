@@ -2,9 +2,9 @@ import * as vscode from "vscode";
 import { JVMBuildSystem } from ".";
 
 export class MavenBuildSystem implements JVMBuildSystem {
-  name: string = "Maven"
+  name: string = "Maven";
   
-  workspaceFolder: vscode.WorkspaceFolder
+  workspaceFolder: vscode.WorkspaceFolder;
 
   constructor(folder: vscode.WorkspaceFolder) {
     this.workspaceFolder = folder;
@@ -22,7 +22,9 @@ export class MavenBuildSystem implements JVMBuildSystem {
 
   async needsKotlin() {
     const uri = await this.getBuildFile();
-    if (!uri) return false;
+    if (!uri) {
+      return false;
+    }
 
     const contents = (await vscode.workspace.openTextDocument(uri)).getText();
 

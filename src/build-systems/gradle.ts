@@ -5,9 +5,9 @@ const KOTLIN_VERSION = "2.2.0";
 const configureInPlaceReplacements = true;
 
 export class GradleBuildSystem implements JVMBuildSystem {
-  name: string = "Gradle"
+  name: string = "Gradle";
 
-  workspaceFolder: vscode.WorkspaceFolder
+  workspaceFolder: vscode.WorkspaceFolder;
 
   constructor(folder: vscode.WorkspaceFolder) {
     this.workspaceFolder = folder;
@@ -31,7 +31,9 @@ export class GradleBuildSystem implements JVMBuildSystem {
 
   async needsKotlin() {
     const uri = await this.getBuildFile();
-    if (!uri) return false;
+    if (!uri) {
+      return false;
+    }
 
     const contents = this.stripComments((await vscode.workspace.openTextDocument(uri)).getText());
 
@@ -42,7 +44,9 @@ export class GradleBuildSystem implements JVMBuildSystem {
       /\bid\s*\(\s*["']org\.jetbrains\.kotlin[^"']*["']\s*\)/,
       /\bid\s+['"]org\.jetbrains\.kotlin[^'"]*['"]/,
     ];
-    if (pluginPatterns.some(re => re.test(contents))) return false;
+    if (pluginPatterns.some(re => re.test(contents))) {
+      return false;
+    }
 
     return true;
   }
@@ -50,7 +54,7 @@ export class GradleBuildSystem implements JVMBuildSystem {
   async enableKotlin() {
     const uri = await this.getBuildFile();
     if (!uri) {
-      throw new Error("No build.gradle(.kts) found in this workspace folder.")
+      throw new Error("No build.gradle(.kts) found in this workspace folder.");
     }
     
     const isKts = uri.fsPath.endsWith(".kts");
@@ -66,7 +70,7 @@ export class GradleBuildSystem implements JVMBuildSystem {
     if (!pluginsSeen) {
       // no plugin found, insert it
 
-      const pluginsBlock = /plugins\s*\{[\s\S]*?}/;
+      const pluginsBlock = /plugins\s*\{\s*(?:[^{}]|\{[^{}]*})*}/;
       if (pluginsBlock.test(updated)) {
         updated = updated.replace(pluginsBlock, m => m.replace("{", "{\n    " + plugin));
       } else {
@@ -106,7 +110,12 @@ export class GradleBuildSystem implements JVMBuildSystem {
 
     if (updated !== text) {
       const edit = new vscode.WorkspaceEdit();
-      edit.replace(uri, doc.lineAt(doc.lineCount - 1).rangeIncludingLineBreak, updated);
+      edit.replace(uri, new vscode.Range(
+        0,
+        0,
+        doc.lineCount,
+        0xffff
+      ), updated);
 
       await vscode.workspace.applyEdit(edit);
       await doc.save();

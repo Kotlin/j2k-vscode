@@ -4,7 +4,7 @@ import * as path from "path";
 
 import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
-import { detectBuildSystem, JVMBuildSystem } from "./build-systems";
+import { detectBuildSystem } from "./build-systems";
 
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
   if (!editor) {
@@ -22,6 +22,7 @@ function inDiff(editor: vscode.TextEditor | undefined): boolean {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
+  console.log("activated");
   // so that we don't have to discover open workspaces when accepting/rejecting,
   // we convey this state between the convert command
   // and the accept/cancel commands
@@ -31,25 +32,28 @@ export async function activate(context: vscode.ExtensionContext) {
   // for general purpose logging
   const outputChannel = vscode.window.createOutputChannel("j2k-vscode");
   outputChannel.appendLine("Output channel loaded");
+  console.log("OUTPUT CHANEL");
 
   // to preserve VC history, lazy load vcsHandler
   let vcsHandler: VCSFileRenamer;
   
   const buildSystem = await detectBuildSystem();
 
+  outputChannel.appendLine(`Output channel detected: ${buildSystem.name}`);
+  console.log("ACTIVATED");
+
   if (await buildSystem.needsKotlin()) {
+    outputChannel.appendLine(`Build system ${buildSystem.name} requires Kotlin to be configured.`);
     vscode.window.showInformationMessage(
       "This project currently builds only Java. Would you like to add Kotlin support automatically?",
       "Add Kotlin",
       "Not now"
-    ).then(choice => {
+    ).then(async (choice) => {
       if (choice !== "Add Kotlin") {
         return;
       }
 
-      buildSystem.enableKotlin().then(() => {
-        vscode.window.showInformationMessage(`Kotlin has been configured in your ${buildSystem.name} project.`);
-      });
+      await buildSystem.enableKotlin();
     });
   }
 

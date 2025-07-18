@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { JVMBuildSystem } from ".";
+import * as xml2js from "xml2js";
 
 export class MavenBuildSystem implements JVMBuildSystem {
   name: string = "Maven";
@@ -32,6 +33,16 @@ export class MavenBuildSystem implements JVMBuildSystem {
   }
 
   async enableKotlin() {
+    const uri = await this.getBuildFile();
+    if (!uri) {
+      throw new Error("No pom.xml found in this workspace folder.");
+    }
     
+    const doc = await vscode.workspace.openTextDocument(uri);
+    const text = doc.getText();
+    const parser = new xml2js.Parser({ preserveChildrenOrder: true });
+    const builder = new xml2js.Builder({ renderOpts: { pretty: true, indent: "  "}});
+
+    const pom = await parser.parseStringPromise(text);
   }
 }

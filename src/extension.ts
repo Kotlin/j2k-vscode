@@ -22,7 +22,6 @@ function inDiff(editor: vscode.TextEditor | undefined): boolean {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-  console.log("activated");
   // so that we don't have to discover open workspaces when accepting/rejecting,
   // we convey this state between the convert command
   // and the accept/cancel commands
@@ -32,7 +31,6 @@ export async function activate(context: vscode.ExtensionContext) {
   // for general purpose logging
   const outputChannel = vscode.window.createOutputChannel("j2k-vscode");
   outputChannel.appendLine("Output channel loaded");
-  console.log("OUTPUT CHANEL");
 
   // to preserve VC history, lazy load vcsHandler
   let vcsHandler: VCSFileRenamer;
@@ -40,7 +38,6 @@ export async function activate(context: vscode.ExtensionContext) {
   const buildSystem = await detectBuildSystem();
 
   outputChannel.appendLine(`Output channel detected: ${buildSystem.name}`);
-  console.log("ACTIVATED");
 
   if (await buildSystem.needsKotlin()) {
     outputChannel.appendLine(`Build system ${buildSystem.name} requires Kotlin to be configured.`);

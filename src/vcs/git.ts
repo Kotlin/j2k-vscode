@@ -4,7 +4,12 @@ import * as path from "path";
 
 // note: not many reliable docs on the git api that vscode exposes
 // this comes from https://github.com/microsoft/vscode/tree/main/extensions/git
-import type { GitExtension, API as GitAPI, Repository } from "./git.d";
+import {
+  Status,
+  type Change,
+  type API as GitAPI,
+  type Repository,
+} from "./git.d";
 
 export class GitFileRenamer implements VCSFileRenamer {
   private api: GitAPI;
@@ -24,18 +29,27 @@ export class GitFileRenamer implements VCSFileRenamer {
     const newName = path.basename(newUri.fsPath);
 
     this.channel.appendLine(
-      `GitFileRenamer: Renamed file ${newName} to ${newName}`,
+      `GitFileRenamer: Renamed file ${oldName} to ${newName}`,
     );
 
     const repo: Repository = this.api.getRepository(oldUri)!;
 
-    // a Repository object doesn't expose a remove/delete method
-    await vscode.commands.executeCommand("git.stage", oldUri);
-    await repo.add([newUri.fsPath]);
+    await repo.status();
 
-    this.channel.appendLine(
-      `GitFileRenamer: Staged the rename as a deletion and addition`,
-    );
+    const deletionChange: Change | undefined =
+      repo.state.workingTreeChanges.find(
+        (change) =>
+          change.status === Status.DELETED &&
+          change.uri.fsPath === oldUri.fsPath,
+      );
+
+    if (deletionChange) {
+      await repo.add([oldUri.fsPath]);
+      this.channel.appendLine("GitFileRenamer: Staged deletion of old file");
+    }
+
+    await repo.add([newUri.fsPath]);
+    this.channel.appendLine("GitFileRenamer: Staged addition of new file");
 
     await repo.commit(`Rename ${oldName} -> ${newName}`);
 

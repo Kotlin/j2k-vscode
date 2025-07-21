@@ -100,10 +100,10 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
       outputChannel.appendLine("convertUsingLLM: Starting LLM stream");
 
       for await (const chunk of await chain.stream({ javaCode })) {
-        const delta: string = 
-          (typeof chunk === "string") ? (chunk) : (chunk.content as string);
+        const delta: string =
+          typeof chunk === "string" ? chunk : (chunk.content as string);
         buf += delta;
-        
+
         if (insideCode) {
           tokens += 1;
 
@@ -111,7 +111,10 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
           if (buf.includes("\n") || tokens >= TOKENS_PER_FLUSH) {
             await editor.edit(
               (eb) =>
-                eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),
+                eb.insert(
+                  new vscode.Position(editor.document.lineCount, 0),
+                  buf,
+                ),
               { undoStopBefore: false, undoStopAfter: false },
             );
 
@@ -153,7 +156,8 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
       // nothing.
       if (buf.length) {
         await editor.edit(
-          (eb) => eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),
+          (eb) =>
+            eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),
           { undoStopBefore: false, undoStopAfter: false },
         );
       }

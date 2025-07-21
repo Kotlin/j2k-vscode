@@ -40,7 +40,9 @@ export function logFile(filename: string, content: string) {
   // for ease of later programmatic inspection, put the timestamp first
   const header = `// ${timestamp} (logged at)\n\n`;
 
-  fs.writeFileSync(path.join(logsDir, filename), `${header}${content}`, { encoding: "utf8" });
+  fs.writeFileSync(path.join(logsDir, filename), `${header}${content}`, {
+    encoding: "utf8",
+  });
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -89,7 +91,12 @@ export async function activate(context: vscode.ExtensionContext) {
         (e) => e.document === kotlinBuf,
       )!;
 
-      const result = await convertToKotlin(javaCode, outputChannel, context, kotlinEditor);
+      const result = await convertToKotlin(
+        javaCode,
+        outputChannel,
+        context,
+        kotlinEditor,
+      );
 
       logFile(`${originalBase}_generated.kt`, result);
 

@@ -99,6 +99,8 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
 
       outputChannel.appendLine("convertUsingLLM: Starting LLM stream");
 
+      let finalResult = "";
+
       for await (const chunk of await chain.stream({ javaCode })) {
         const delta: string =
           typeof chunk === "string" ? chunk : (chunk.content as string);
@@ -117,6 +119,8 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
                 ),
               { undoStopBefore: false, undoStopAfter: false },
             );
+
+            finalResult += buf;
 
             // reset buffer
             buf = "";
@@ -160,6 +164,8 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
             eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),
           { undoStopBefore: false, undoStopAfter: false },
         );
+
+        finalResult += buf;
       }
 
       progress.report({
@@ -168,7 +174,7 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
       });
 
       // suppress string return in case future code will want to return the string
-      return "";
+      return finalResult;
     },
   );
 }

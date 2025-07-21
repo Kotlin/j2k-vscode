@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import * as path from "path";
+import * as fs from "fs";
 
 import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
@@ -18,6 +19,22 @@ function inDiff(editor: vscode.TextEditor | undefined): boolean {
     vscode.window.activeTextEditor?.document.languageId === "kotlin";
 
   return inDiff;
+}
+
+export function logFile(filename: string, content: string) {
+  const workspaceFolders = vscode.workspace.workspaceFolders;
+  if (workspaceFolders === undefined) {
+    throw new Error("Expected a workspace to be open");
+  }
+
+  const basePath = workspaceFolders[0].uri.fsPath;
+
+  const logsDir = path.join(basePath, "j2k-logs");
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+
+  fs.writeFileSync(path.join(logsDir, filename), content, { encoding: "utf8" });
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -46,6 +63,9 @@ export async function activate(context: vscode.ExtensionContext) {
       const javaCode = javaBuf.getText();
       javaUri = uri;
 
+      const originalBase = path.basename(uri.fsPath, ".java");
+      logFile(`${originalBase}.java`, javaCode);
+
       const kotlinBuf = await vscode.workspace.openTextDocument({
         language: "kotlin",
         content: "",
@@ -63,7 +83,9 @@ export async function activate(context: vscode.ExtensionContext) {
         (e) => e.document === kotlinBuf,
       )!;
 
-      await convertToKotlin(javaCode, outputChannel, context, kotlinEditor);
+      const result = await convertToKotlin(javaCode, outputChannel, context, kotlinEditor);
+
+      logFile(`${originalBase}_generated.kt`, result);
 
       outputChannel.appendLine("Java to Kotlin Preview ready");
     },
@@ -98,6 +120,11 @@ export async function activate(context: vscode.ExtensionContext) {
         kotlinReplacement,
         Buffer.from(replacementCode, "utf-8"),
       );
+
+      // log the changes made to the file
+      const originalBase = path.basename(javaUri.fsPath, ".java");
+      const logFileName = `${originalBase}_polished.kt`
+      logFile(logFileName, replacementCode);
 
       await vcsHandler.stageConversionReplacement(kotlinReplacement);
 

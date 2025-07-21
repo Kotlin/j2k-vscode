@@ -10,7 +10,7 @@ import {
   ProviderResult,
   Command,
   CancellationToken,
-  // SourceControlHistoryItem, (from copy and paste, but causes error)
+  // SourceControlHistoryItem // editor's note: from the source on github, but causes error
 } from "vscode";
 export { ProviderResult } from "vscode";
 

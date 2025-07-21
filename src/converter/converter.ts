@@ -173,7 +173,6 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
         message: "LLM response received",
       });
 
-      // suppress string return in case future code will want to return the string
       return finalResult;
     },
   );

@@ -75,6 +75,8 @@ export async function activate(context: vscode.ExtensionContext) {
         return;
       }
 
+      outputChannel.append("Configuring Kotlin from prompt");
+
       await buildSystem.enableKotlin();
     });
   }
@@ -222,6 +224,18 @@ export async function activate(context: vscode.ExtensionContext) {
         outputChannel.appendLine(
           "LLM API key saved to VS Code secure storage.",
         );
+      }
+    }),
+  );
+
+  // bind the enable kotlin function to a command
+  context.subscriptions.push(
+    vscode.commands.registerCommand("j2k.configureKotlin", async () => {
+      outputChannel.append("Manual trigger: Configuring Kotlin");
+      const buildSystem = await detectBuildSystem();
+
+      if (await buildSystem.needsKotlin()) {
+        await buildSystem.enableKotlin();
       }
     }),
   );

@@ -52,6 +52,11 @@
         "command": "j2k.setApiKey",
         "title": "Set API Key",
         "category": "J2K"
+      },
+      {
+        "command": "j2k.configureKotlin",
+        "title": "Configure Kotlin for workspace",
+        "category": "J2K"
       }
     ],
     "menus": {
@@ -82,6 +87,10 @@
         {
           "command": "j2k.cancelFromToolbar",
           "when": "false"
+        },
+        {
+          "command": "j2k.configureKotlin",
+          "when": "workspaceFolderCount != 0"
         }
       ]
     },

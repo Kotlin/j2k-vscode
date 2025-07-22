@@ -1,0 +1,32 @@
+==========
+CrashController conversion:
+0 characters changed out of 381 total
+This is 0% of the file, so 100% of the file was valid.
+==========
+PetTypeFormatter conversion:
+82 characters changed out of 681 total
+This is 12% of the file, so 88% of the file was valid.
+==========
+PetTypeRepository conversion:
+244 characters changed out of 567 total
+This is 43% of the file, so 57% of the file was valid.
+==========
+PetType conversion:
+5 characters changed out of 255 total
+This is 2% of the file, so 98% of the file was valid.
+==========
+PetValidator conversion:
+15 characters changed out of 1162 total
+This is 1.3% of the file, so 98.7% of the file was valid.
+==========
+Specialty conversion:
+65 characters changed out of 258 total
+This is 25.2% of the file, so 74.8% of the file was valid.
+==========
+Vets conversion:
+73 characters changed out of 262 total
+This is 27.9% of the file, so 72.1% of the file was valid.
+==========
+Visit conversion:
+126 characters changed out of 630 total
+This is 20% of the file, so 80% of the file was valid.

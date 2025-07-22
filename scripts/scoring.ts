@@ -8,7 +8,10 @@ type ConversionPair = {
   polished: string
 };
 
-async function collectConversionPairs(dir = "conversion-logs/v1") {
+const ITERATION = 1
+const DIRECTORY = `conversion-logs/v${ITERATION}`
+
+async function collectConversionPairs(dir = DIRECTORY) {
   const pairs = new Map<string, Partial<ConversionPair>>();
 
   for (const file of await fs.promises.readdir(dir)) {
@@ -52,9 +55,12 @@ collectConversionPairs().then(pairs => {
       minimumFractionDigits: 0
     });
 
-    console.log(`==========
+    const summary = `==========
 ${name} conversion:
 ${editsRequired} characters changed out of ${polishedContent.length} total
-This is ${percent.format(fraction)} of the file, so ${percent.format(1 - fraction)} of the file was valid.`)
+This is ${percent.format(fraction)} of the file, so ${percent.format(1 - fraction)} of the file was valid.`;
+    console.log(summary);
+
+    fs.appendFileSync(DIRECTORY + "/results.txt", summary + "\n", { encoding: "utf-8", flag: "a" });
   }
 });

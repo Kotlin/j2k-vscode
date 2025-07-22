@@ -33,10 +33,14 @@ async function collectConversionPairs(dir = "conversion-logs/v1") {
   );
 }
 
+function stripTimestampHeader(text: string, headerLines = 2): string {
+  return text.split(/\r?\n/).slice(headerLines).join("\n");
+}
+
 collectConversionPairs().then(pairs => {
   for (const { name, generated, polished } of pairs) {
-    const generatedContent = fs.readFileSync(generated, { encoding: "utf-8" });
-    const polishedContent = fs.readFileSync(polished, { encoding: "utf-8" });
+    const generatedContent = stripTimestampHeader(fs.readFileSync(generated, { encoding: "utf-8" }));
+    const polishedContent = stripTimestampHeader(fs.readFileSync(polished, { encoding: "utf-8" }));
 
     // how many characters of the final result were from the user?
     const editsRequired = distance(generatedContent, polishedContent);

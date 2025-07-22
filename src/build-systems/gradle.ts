@@ -29,6 +29,18 @@ export class GradleBuildSystem implements JVMBuildSystem {
       .replace(/\/\/.*$/gm, "");
   }
 
+  private detectIndentUnit(text: string) {
+    for (const line of text.split(/\r?\n/)) {
+      const indent = line.match(/^([ \t]+)\S/);
+      if (indent) {
+        return indent[1].includes("\t") ? "\t" : " ".repeat(indent[1].length);
+      }
+    }
+
+    // 4 spaces by default
+    return "    ";
+  }
+
   async needsKotlin() {
     const uri = await this.getBuildFile();
     if (!uri) {
@@ -64,6 +76,8 @@ export class GradleBuildSystem implements JVMBuildSystem {
     const doc = await vscode.workspace.openTextDocument(uri);
     const text = doc.getText();
     
+    const indent = this.detectIndentUnit(text);
+    
     let updated = text;
 
     const pluginsSeen = /kotlin\("jvm"\)|org\.jetbrains\.kotlin\.jvm/.test(text);
@@ -72,10 +86,10 @@ export class GradleBuildSystem implements JVMBuildSystem {
 
       const pluginsBlock = /plugins\s*\{\s*(?:[^{}]|\{[^{}]*})*}/;
       if (pluginsBlock.test(updated)) {
-        updated = updated.replace(pluginsBlock, m => m.replace("{", "{\n    " + plugin));
+        updated = updated.replace(pluginsBlock, m => m.replace("{", `{\n${indent}${plugin}`));
       } else {
         // put plugins at the top
-        updated = `plugins {\n    ${plugin}\n}\n\n` + updated;
+        updated = `plugins {\n${indent}${plugin}\n}\n\n` + updated;
       }
     }
 
@@ -85,17 +99,17 @@ export class GradleBuildSystem implements JVMBuildSystem {
 
       const dependenciesBlock = /dependencies\s*\{[\s\S]*?}/;
       if (dependenciesBlock.test(updated)) {
-        updated = updated.replace(dependenciesBlock, m => m.replace("{", "{\n    " + stdlib));
+        updated = updated.replace(dependenciesBlock, m => m.replace("{", `{\n${indent}${stdlib}`));
       } else {
-        updated += `\n\ndependencies {\n    ${stdlib}\n}\n`;
+        updated += `\n\ndependencies {\n${indent}${stdlib}\n}\n`;
       }
     }
 
     const sourceDirectorySeen = /sourceSets\.(main|["']main["'])[^}]*\.kotlin\.srcDir/.test(updated);
     if (configureInPlaceReplacements && !sourceDirectorySeen) {
-      const srcDirLines = isKts ? `    sourceSets["main"].kotlin.srcDir("src/main/java")
-    sourceSets["test"].kotlin.srcDir("src/test/java")` : `    sourceSets.main.kotlin.srcDirs += 'src/main/java'
-    sourceSets.test.kotlin.srcDirs += 'src/test/java'`;
+      const srcDirLines = isKts ? `${indent}sourceSets["main"].kotlin.srcDir("src/main/java")
+${indent}sourceSets["test"].kotlin.srcDir("src/test/java")` : `${indent}sourceSets.main.kotlin.srcDirs += 'src/main/java'
+${indent}sourceSets.test.kotlin.srcDirs += 'src/test/java'`;
 
       const kotlinBlock = /kotlin\s*\{[\s\S]*?}/;
       if (kotlinBlock.test(updated)) {
@@ -104,7 +118,7 @@ export class GradleBuildSystem implements JVMBuildSystem {
           m => m.replace("{", "{\n" + srcDirLines)
         );
       } else {
-        updated += `\n\nkotlin {\n${srcDirLines}\n}\n`;
+        updated += `\nkotlin {\n${srcDirLines}\n}\n`;
       }
     }
 

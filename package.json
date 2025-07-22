@@ -2,7 +2,7 @@
   "name": "j2k-vscode",
   "displayName": "j2k-vscode",
   "description": "A VS Code extension that provides a polished user experience for converting Java files to Kotlin with manual review capabilities.",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "repository": {
     "type": "git",
     "url": "https://github.com/Kotlin/j2k-vscode.git"
@@ -14,7 +14,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onLanguage:java"
+    "onLanguage:java",
+    "onStartupFinished"
   ],
   "extensionDependencies": [
     "vscode.git"
@@ -51,6 +52,11 @@
         "command": "j2k.setApiKey",
         "title": "Set API Key",
         "category": "J2K"
+      },
+      {
+        "command": "j2k.configureKotlin",
+        "title": "Configure Kotlin for workspace",
+        "category": "J2K"
       }
     ],
     "menus": {
@@ -81,6 +87,10 @@
         {
           "command": "j2k.cancelFromToolbar",
           "when": "false"
+        },
+        {
+          "command": "j2k.configureKotlin",
+          "when": "workspaceFolderCount != 0"
         }
       ]
     },
@@ -150,6 +160,7 @@
     "@types/node": "^20.19.7",
     "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.101.0",
+    "@types/xml2js": "^0.4.14",
     "@typescript-eslint/eslint-plugin": "^8.35.1",
     "@typescript-eslint/parser": "^8.35.1",
     "@vscode/test-cli": "^0.0.11",
@@ -171,6 +182,7 @@
     "@langchain/core": "^0.3.62",
     "@langchain/ollama": "^0.2.3",
     "@langchain/openai": "^0.5.18",
-    "langchain": "^0.3.29"
+    "langchain": "^0.3.29",
+    "xml2js": "^0.6.2"
   }
 }

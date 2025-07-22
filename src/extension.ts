@@ -5,6 +5,7 @@ import * as fs from "fs";
 
 import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
+import { detectBuildSystem } from "./build-systems";
 
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
   if (!editor) {
@@ -58,6 +59,27 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // to preserve VC history, lazy load vcsHandler
   let vcsHandler: VCSFileRenamer;
+  
+  const buildSystem = await detectBuildSystem();
+
+  outputChannel.appendLine(`Output channel detected: ${buildSystem.name}`);
+
+  if (await buildSystem.needsKotlin()) {
+    outputChannel.appendLine(`Build system ${buildSystem.name} requires Kotlin to be configured.`);
+    vscode.window.showInformationMessage(
+      "This project currently builds only Java. Would you like to add Kotlin support automatically?",
+      "Add Kotlin",
+      "Not now"
+    ).then(async (choice) => {
+      if (choice !== "Add Kotlin") {
+        return;
+      }
+
+      outputChannel.append("Configuring Kotlin from prompt");
+
+      await buildSystem.enableKotlin();
+    });
+  }
 
   const convertFile = vscode.commands.registerCommand(
     "j2k.convertFile",
@@ -202,6 +224,18 @@ export async function activate(context: vscode.ExtensionContext) {
         outputChannel.appendLine(
           "LLM API key saved to VS Code secure storage.",
         );
+      }
+    }),
+  );
+
+  // bind the enable kotlin function to a command
+  context.subscriptions.push(
+    vscode.commands.registerCommand("j2k.configureKotlin", async () => {
+      outputChannel.append("Manual trigger: Configuring Kotlin");
+      const buildSystem = await detectBuildSystem();
+
+      if (await buildSystem.needsKotlin()) {
+        await buildSystem.enableKotlin();
       }
     }),
   );

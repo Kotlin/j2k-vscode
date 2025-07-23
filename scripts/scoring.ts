@@ -8,6 +8,12 @@ type ConversionPair = {
   polished: string
 };
 
+type SummaryEntry = {
+  name: string,
+  edits: string,
+  valid: string
+};
+
 const ITERATION = 1
 const DIRECTORY = `conversion-logs/v${ITERATION}`
 
@@ -41,6 +47,11 @@ function stripTimestampHeader(text: string, headerLines = 2): string {
 }
 
 collectConversionPairs().then(pairs => {
+  // clear the file
+  fs.writeFileSync(DIRECTORY + "/results.txt", "", { encoding: "utf-8", flag: "w" });
+
+  const rows: SummaryEntry[] = [];
+
   for (const { name, generated, polished } of pairs) {
     const generatedContent = stripTimestampHeader(fs.readFileSync(generated, { encoding: "utf-8" }));
     const polishedContent = stripTimestampHeader(fs.readFileSync(polished, { encoding: "utf-8" }));
@@ -62,5 +73,37 @@ This is ${percent.format(fraction)} of the file, so ${percent.format(1 - fractio
     console.log(summary);
 
     fs.appendFileSync(DIRECTORY + "/results.txt", summary + "\n", { encoding: "utf-8", flag: "a" });
+
+    rows.push({
+      name: name,
+      edits: editsRequired.toString(),
+      valid: percent.format(1 - fraction)
+    });
+  }
+
+  console.log("==========")
+  fs.appendFileSync(DIRECTORY + "/results.txt", "==========" + "\n\n\n", { encoding: "utf-8", flag: "a" });
+
+  fs.appendFileSync(DIRECTORY + "/results.txt", "==========\nResults summary:\n==========" + "\n\n", { encoding: "utf-8", flag: "a" });
+
+  // add line by line summary
+  const header: SummaryEntry = {
+    name: "File",
+    edits: "Chars Changed",
+    valid: "Validity"
+  };
+
+  const nameWidth = Math.max(header.name.length, ...rows.map(r => r.name.length)) + 2;
+  const editsWidth = Math.max(header.edits.length, ...rows.map(r => r.edits.length)) + 2;
+  const validityWidth = Math.max(header.valid.length, ...rows.map(r => r.valid.length)) + 2;
+
+  // sort in descending order of validity
+  rows.sort((left, right) => +right.valid.slice(0, -1) - +left.valid.slice(0, -1));
+
+  fs.appendFileSync(DIRECTORY + "/results.txt", `${header.name.padEnd(nameWidth)} | ${header.edits.padEnd(editsWidth)} | ${header.valid.padEnd(validityWidth)}` + "\n", { encoding: "utf-8", flag: "a" });
+  fs.appendFileSync(DIRECTORY + "/results.txt", "-".repeat(nameWidth + 1) + "+" + "-".repeat(editsWidth + 2) + "+" + "-".repeat(validityWidth + 1) + "\n", { encoding: "utf-8", flag: "a" });
+
+  for (const row of rows) {
+    fs.appendFileSync(DIRECTORY + "/results.txt", `${row.name.padEnd(nameWidth)} | ${row.edits.padEnd(editsWidth)} | ${row.valid.padEnd(validityWidth)}` + "\n", { encoding: "utf-8", flag: "a" });
   }
 });

@@ -4,13 +4,13 @@ import * as xml2js from "xml2js";
 
 export class MavenBuildSystem implements JVMBuildSystem {
   name: string = "Maven";
-  
+
   workspaceFolder: vscode.WorkspaceFolder;
 
   constructor(folder: vscode.WorkspaceFolder) {
     this.workspaceFolder = folder;
   }
-  
+
   private async getBuildFile() {
     const [file] = await vscode.workspace.findFiles(
       new vscode.RelativePattern(this.workspaceFolder, "pom.xml"),
@@ -37,11 +37,13 @@ export class MavenBuildSystem implements JVMBuildSystem {
     if (!uri) {
       throw new Error("No pom.xml found in this workspace folder.");
     }
-    
+
     const doc = await vscode.workspace.openTextDocument(uri);
     const text = doc.getText();
     const parser = new xml2js.Parser({ preserveChildrenOrder: true });
-    const builder = new xml2js.Builder({ renderOpts: { pretty: true, indent: "  "}});
+    const builder = new xml2js.Builder({
+      renderOpts: { pretty: true, indent: "  " },
+    });
 
     const pom = await parser.parseStringPromise(text);
   }

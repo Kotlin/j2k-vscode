@@ -59,26 +59,30 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // to preserve VC history, lazy load vcsHandler
   let vcsHandler: VCSFileRenamer;
-  
+
   const buildSystem = await detectBuildSystem();
 
   outputChannel.appendLine(`Output channel detected: ${buildSystem.name}`);
 
   if (await buildSystem.needsKotlin()) {
-    outputChannel.appendLine(`Build system ${buildSystem.name} requires Kotlin to be configured.`);
-    vscode.window.showInformationMessage(
-      "This project currently builds only Java. Would you like to add Kotlin support automatically?",
-      "Add Kotlin",
-      "Not now"
-    ).then(async (choice) => {
-      if (choice !== "Add Kotlin") {
-        return;
-      }
+    outputChannel.appendLine(
+      `Build system ${buildSystem.name} requires Kotlin to be configured.`,
+    );
+    vscode.window
+      .showInformationMessage(
+        "This project currently builds only Java. Would you like to add Kotlin support automatically?",
+        "Add Kotlin",
+        "Not now",
+      )
+      .then(async (choice) => {
+        if (choice !== "Add Kotlin") {
+          return;
+        }
 
-      outputChannel.append("Configuring Kotlin from prompt");
+        outputChannel.append("Configuring Kotlin from prompt");
 
-      await buildSystem.enableKotlin();
-    });
+        await buildSystem.enableKotlin();
+      });
   }
 
   const convertFile = vscode.commands.registerCommand(

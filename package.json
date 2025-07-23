@@ -150,13 +150,14 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "format": "prettier --write src",
-    "test": "vscode-test",
+    "test:unit": "NODE_OPTIONS=\"--import ./src/test/register-alias.mjs\" tsx ./node_modules/mocha/bin/mocha.js --extension ts \"src/test/**/*.spec.ts\"",
+    "test:integration": "vscode-test",
     "release": "ts-node scripts/release.ts $npm_config_ver"
   },
   "devDependencies": {
     "@octokit/rest": "^22.0.0",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^20.19.7",
+    "@types/node": "^20.19.9",
     "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.101.0",
     "@types/xml2js": "^0.4.14",
@@ -170,10 +171,13 @@
     "eslint": "^9.30.1",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-prettier": "^5.5.1",
+    "mocha": "^11.7.1",
+    "mock-require": "^3.0.3",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.6.2",
     "sinon": "^21.0.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   },
   "dependencies": {

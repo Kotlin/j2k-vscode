@@ -5,3 +5,5 @@ out/
 
 *.vsix
 .env
+
+__pycache__/

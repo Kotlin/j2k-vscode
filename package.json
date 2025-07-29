@@ -150,9 +150,12 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "format": "prettier --write src",
-    "test:unit": "NODE_OPTIONS=\"--import ./src/test/register-alias.mjs\" tsx ./node_modules/mocha/bin/mocha.js --extension ts \"src/test/**/*.spec.ts\"",
-    "test:integration": "vscode-test",
-    "release": "ts-node scripts/release.ts $npm_config_ver"
+    "release": "ts-node scripts/release.ts $npm_config_ver",
+    "test": "npm-run-all -l test:unit:run test:integration:run",
+    "test:unit": "npm run compile-tests && npm run test:unit:run",
+    "test:unit:run": "vscode-test --config .vscode-test.unit.mjs",
+    "test:integration": "npm run compile-tests && npm run test:integration:run",
+    "test:integration:run": "vscode-test --config .vscode-test.integration.mjs"
   },
   "devDependencies": {
     "@octokit/rest": "^22.0.0",

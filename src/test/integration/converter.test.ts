@@ -1,5 +1,5 @@
 import * as assert from "assert";
-import { convertToKotlin } from "../converter";
+import { convertToKotlin } from "../../converter";
 
 suite("convertToKotlin()", () => {
   const javaHelloWorld = `public class Hello {

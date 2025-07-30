@@ -1,371 +1,362 @@
-OLD_CODE = """// 2025-07-23T08:55:18.029Z (logged at)
+def read(filename):
+  with open(filename, "r") as f:
+    return f.read()
 
-/*
- * Copyright 2012-2025 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-package org.springframework.samples.petclinic.owner;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import org.springframework.core.style.ToStringCreator;
-import org.springframework.samples.petclinic.model.Person;
-import org.springframework.util.Assert;
-
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderBy;
-import jakarta.persistence.Table;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.NotBlank;
-
-/**
- * Simple JavaBean domain object representing an owner.
- *
- * @author Ken Krebs
- * @author Juergen Hoeller
- * @author Sam Brannen
- * @author Michael Isvy
- * @author Oliver Drotbohm
- * @author Wick Dynex
- */
-@Entity
-@Table(name = "owners")
-public class Owner extends Person {
-
-	@Column(name = "address")
-	@NotBlank
-	private String address;
-
-	@Column(name = "city")
-	@NotBlank
-	private String city;
-
-	@Column(name = "telephone")
-	@NotBlank
-	@Pattern(regexp = "\\d{10}", message = "{telephone.invalid}")
-	private String telephone;
-
-	@OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-	@JoinColumn(name = "owner_id")
-	@OrderBy("name")
-	private final List<Pet> pets = new ArrayList<>();
-
-	public String getAddress() {
-		return this.address;
-	}
-
-	public void setAddress(String address) {
-		this.address = address;
-	}
-
-	public String getCity() {
-		return this.city;
-	}
-
-	public void setCity(String city) {
-		this.city = city;
-	}
-
-	public String getTelephone() {
-		return this.telephone;
-	}
-
-	public void setTelephone(String telephone) {
-		this.telephone = telephone;
-	}
-
-	public List<Pet> getPets() {
-		return this.pets;
-	}
-
-	public void addPet(Pet pet) {
-		if (pet.isNew()) {
-			getPets().add(pet);
-		}
-	}
-
-	/**
-	 * Return the Pet with the given name, or null if none found for this Owner.
-	 * @param name to test
-	 * @return the Pet with the given name, or null if no such Pet exists for this Owner
-	 */
-	public Pet getPet(String name) {
-		return getPet(name, false);
-	}
-
-	/**
-	 * Return the Pet with the given id, or null if none found for this Owner.
-	 * @param id to test
-	 * @return the Pet with the given id, or null if no such Pet exists for this Owner
-	 */
-	public Pet getPet(Integer id) {
-		for (Pet pet : getPets()) {
-			if (!pet.isNew()) {
-				Integer compId = pet.getId();
-				if (compId.equals(id)) {
-					return pet;
-				}
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Return the Pet with the given name, or null if none found for this Owner.
-	 * @param name to test
-	 * @param ignoreNew whether to ignore new pets (pets that are not saved yet)
-	 * @return the Pet with the given name, or null if no such Pet exists for this Owner
-	 */
-	public Pet getPet(String name, boolean ignoreNew) {
-		for (Pet pet : getPets()) {
-			String compName = pet.getName();
-			if (compName != null && compName.equalsIgnoreCase(name)) {
-				if (!ignoreNew || !pet.isNew()) {
-					return pet;
-				}
-			}
-		}
-		return null;
-	}
-
-	@Override
-	public String toString() {
-		return new ToStringCreator(this).append("id", this.getId())
-			.append("new", this.isNew())
-			.append("lastName", this.getLastName())
-			.append("firstName", this.getFirstName())
-			.append("address", this.address)
-			.append("city", this.city)
-			.append("telephone", this.telephone)
-			.toString();
-	}
-
-	/**
-	 * Adds the given {@link Visit} to the {@link Pet} with the given identifier.
-	 * @param petId the identifier of the {@link Pet}, must not be {@literal null}.
-	 * @param visit the visit to add, must not be {@literal null}.
-	 */
-	public void addVisit(Integer petId, Visit visit) {
-
-		Assert.notNull(petId, "Pet identifier must not be null!");
-		Assert.notNull(visit, "Visit must not be null!");
-
-		Pet pet = getPet(petId);
-
-		Assert.notNull(pet, "Invalid Pet identifier!");
-
-		pet.addVisit(visit);
-	}
-
-}
-"""
-
-CODE = open("input.java", "r").read()
+CODE = read("input.java")
 
 TASK_CONTEXT = """You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist."""
 
 TASK_DESCRIPTION = """Your task is to convert provided Java code into **idiomatic Kotlin**, preserving behaviour while improving readability, safety and maintainability."""
 
-# few-shot prompting examples might help
 EXAMPLES = """Some examples are given for you below.
 
 <example>
 <java>
-public class Greeter {
+package com.acme.util;
+
+import java.time.LocalDate;
+import java.util.Objects;
+
+public class DateGreeter {
     public static void greet(String name) {
-        if (name != null) {
-            System.out.println("Hello, " + name);
-        } else {
-            System.out.println("Hello, Guest");
-        }
+        String who = (name != null) ? name : "Guest";
+        System.out.println("Hello, " + who + " — today is " + LocalDate.now());
     }
 }
 </java>
 
 <convert_think>
-1: I'm looking at the Java and noticing a lot, like how the Greeter class is implicitly open and how the greet method is static. These would map to the open keyword and companion objects respectively in Kotlin.
+1: I'm looking at the Java and noticing a lot, like how the DateGreeter class is implicitly open and how the greet method is static. These would map to the open keyword and companion objects respectively in Kotlin.
 
 <kotlin>
-open class Greeter {
+package com.acme.util
+
+import java.time.LocalDate
+import java.util.Objects
+
+open class DateGreeter {
     companion object {
         fun greet(name: String?) {
-            if (name != null) {
-                println("Hello, " + name)
-            } else {
-                println("Hello, Guest")
-            }
+            var who = if (name != null) name else "Guest"
+            println("Hello, " + who + " — today is " + LocalDate.now())
         }
     }
 }
 </kotlin>
 
-2: In my previous conversion, I converted the Java `String` to the Kotlin `String?`, which handles the only instance of nullability in the code. I can tell this is necessary, as within the code the author has explicitly checked for nullability, so clearly the parameter may possibly be null. Additionally, I don't notice any cases where I might need to convert `var` to `val`, so I won't apply any transformations on this front.
+Invariants check after Step 1
+1. No new side-effects/behaviour: OK
+2. Annotations/targets: OK (none present)
+3. Package/imports preserved: OK
+4. Valid Kotlin: OK
+
+2: In my previous conversion, I converted the Java `String` to the Kotlin `String?`, which handles the only instance of nullability in the code. I can tell this is necessary, as within the code the author has explicitly checked for nullability, so clearly the parameter may possibly be null. Additionally, I notice a case where we have a `var` for `who`: this is only read from, so I will change this to `val`.
 
 <kotlin>
-open class Greeter {
+package com.acme.util
+
+import java.time.LocalDate
+import java.util.Objects
+
+open class DateGreeter {
     companion object {
         fun greet(name: String?) {
-            if (name != null) {
-                println("Hello, " + name)
-            } else {
-                println("Hello, Guest")
-            }
+            val who = if (name != null) name else "Guest"
+            println("Hello, " + who + " — today is " + LocalDate.now())
         }
     }
 }
 </kotlin>
+
+Invariants check after Step 2
+1. No new side-effects/behaviour: OK
+2. Annotations/targets: OK
+3. Package/imports preserved: OK
+4. Valid Kotlin: OK
 
 3: I don't notice any collections within this code, so I won't apply any transformations here. The code is the same as from the step before.
 
 <kotlin>
-open class Greeter {
+package com.acme.util
+
+import java.time.LocalDate
+import java.util.Objects
+
+open class DateGreeter {
     companion object {
         fun greet(name: String?) {
-            if (name != null) {
-                println("Hello, " + name)
-            } else {
-                println("Hello, Guest")
-            }
+            val who = if (name != null) name else "Guest"
+            println("Hello, " + who + " — today is " + LocalDate.now())
         }
     }
 }
 </kotlin>
 
-Step 4: I see that the greet function is not tightly coupled with any other aspects of the Greeter class. Therefore, I will move this to be a top level function. Additionally, I notice that we are formatting the string conditionally based on nullability, so Kotlin's template literals would provide an idiomatic translation here, as well as the Elvis operator. I don't see anywhere else to apply other transformations, so I will stop here.
+Invariants check after Step 3
+1. No new side-effects/behaviour: OK
+2. Annotations/targets: OK
+3. Package/imports preserved: OK
+4. Valid Kotlin: OK
+
+4: I see that the greet function is not tied with any state of the DateGreeter class. Therefore, I will move this to be a top level function. Additionally, I notice that we are formatting the string conditionally based on nullability, so Kotlin's template literals would provide an idiomatic translation here, as well as the Elvis operator. I don't see anywhere else to apply other transformations, so I will stop here.
 
 <kotlin>
+package com.acme.util
+
+import java.time.LocalDate
+import java.util.Objects
+
 fun greet(name: String?) {
-    println("Hello, ${name ?: "Guest"}")
+    println("Hello, ${name ?: "Guest"} — today is ${LocalDate.now()}")
 }
 </kotlin>
+
+Invariants check after Step 4
+1. No new side-effects/behaviour: OK
+2. Annotations/targets: OK
+3. Package/imports preserved: OK
+4. Valid Kotlin: OK
 </convert_think>
 
 <kotlin>
+package com.acme.util
+
+import java.time.LocalDate
+import java.util.Objects
+
 fun greet(name: String?) {
-    println("Hello, ${name ?: "Guest"}")
+    println("Hello, ${name ?: "Guest"} — today is ${LocalDate.now()}")
 }
 </kotlin>
 </example>
 
 <example>
 <java>
-import java.util.ArrayList;
-import java.util.List;
+package com.acme.model;
 
-public class Counter {
-    public static void count(List<String> items) {
-        for (int i = 0; i < items.size(); i++) {
-            System.out.println("Item " + i + ": " + items.get(i));
-        }
+import com.fasterxml.jackson.annotation.JsonProperty;
+import javax.annotation.Nullable;
+import java.util.Objects;
+
+public class User {
+    @JsonProperty("id")
+    private final String id;
+
+    @Nullable
+    private String nickname;
+
+    public User(String id) {
+        this.id = Objects.requireNonNull(id, "id");
     }
 
-    public static List<String> getNames() {
-        List<String> names = new ArrayList<>();
-        names.add("Alice");
-        names.add("Bob");
-        return names;
+    @JsonProperty("id")
+    public String getId() {
+        return id;
+    }
+
+    @Nullable
+    public String getNickname() {
+        return nickname;
+    }
+
+    public void setNickname(@Nullable String nickname) {
+        this.nickname = nickname;
     }
 }
 </java>
 
 <convert_think>
-1: I notice that the Java has a public (implicitly open) class `Counter`, with static methods like `count` and `getNames`. These map to an open class and a companion object in Kotlin, so I'll apply these transformations as part of this step. Additionally, we are concatenating strings to form an output - Kotlin's template literals should help us with this.
+1: My first objective is strict faithfulness to the Java semantics and structure while producing valid Kotlin. I will carry forward the package and all imports verbatim as required. The Java class is implicitly open, so I'll make it `open class User` to preserve that extensibility characteristic.
+
+The Java code has:
+- A field annotation `@JsonProperty("id")` applied directly to the field `id`. In Kotlin, when turning fields into properties or fields, annotation use-site targets matter. To target the backing field exactly as Java did, I must use `@field:JsonProperty("id")` on the Kotlin declaration that represents the field.
+- A getter annotation `@JsonProperty("id")` on `getId()`. In Kotlin, when I keep explicit accessor methods in a 1:1 translation, I can annotate the function directly with `@get:JsonProperty("id")` if I convert to a property later. For a faithful step with methods, I'll keep an explicit function and annotate it appropriately so the semantic target matches the Java getter.
+- A nullable field `nickname` with `@Nullable` on the field. That maps to a Kotlin nullable type `String?`, and I must use `@field:Nullable` to target the field exactly. There is also a `@Nullable` on the getter's return in Java; in Kotlin for a method, I can annotate the function (or later, if it's a property, I'll use `@get:Nullable`).
+- The constructor enforces non-null for `id` using `Objects.requireNonNull`. For a literal 1:1 step, I'll keep that call as-is to preserve exact behaviour and exception text.
+
+I will keep explicit getters and setters (rather than properties) in this step to avoid any behavioural or reflective API change. This adheres to “no new side-effects or behaviour” and maintains method shapes exactly.
 
 <kotlin>
-open class Counter {
-    companion object {
-        fun count(items: List<String>) {
-            for (i in 0 until items.size) {
-                println("Item $i: ${items[i]}")
-            }
-        }
+package com.acme.model
 
-        fun getNames(): List<String> {
-            val names = ArrayList<String>()
-            names.add("Alice")
-            names.add("Bob")
-            return names
-        }
+import com.fasterxml.jackson.annotation.JsonProperty
+import javax.annotation.Nullable
+import java.util.Objects
+
+open class User {
+
+    @field:JsonProperty("id")
+    private val id: String
+
+    @field:Nullable
+    private var nickname: String? = null
+
+    constructor(id: String) {
+        this.id = Objects.requireNonNull(id, "id")
+    }
+
+    @get:JsonProperty("id")
+    fun getId(): String {
+        return id
+    }
+
+    @Nullable
+    fun getNickname(): String? {
+        return nickname
+    }
+
+    fun setNickname(@Nullable nickname: String?) {
+        this.nickname = nickname
     }
 }
 </kotlin>
 
-Step 2: Since the original author of the Java didn't check for nullability in the code, I'm going to assume that the author considered that the parameters to each of these functions wouldn't be null. This approach won't introduce any bugs into the code that weren't previously there.
+Invariants check after Step 1
+1. No new side-effects/behaviour: OK
+2. Annotations/targets preserved exactly: OK
+3. Package/imports preserved: OK
+4. Valid Kotlin: OK
+
+2: Now I evaluate where Kotlin's nullability and mutability guarantees can be expressed without altering behaviour. In Java, `id` is non-null by design: the constructor enforces this via `Objects.requireNonNull`. That means it is safe for `id` to be a non-null `String` in Kotlin, which is already the case in Step 1; importantly, I do not remove the `requireNonNull` call yet, because Step 2 is an audit rather than a structural change. This maintains the exact runtime check and message.
+
+For `nickname`, Java uses `@Nullable` consistently (field and getter), indicating that `nickname` may be absent. In Kotlin, I have represented it as `String?` already, which matches the Java semantics perfectly. The setter parameter is also marked `@Nullable`, so in Kotlin I keep the parameter type `String?` and retain the parameter annotation to preserve reflection/bytecode-level metadata.
+
+There are no temporary variables here, so no `val` vs `var` refinements to perform beyond what exists on the fields themselves (`id` is immutable; `nickname` is mutable), which mirrors the Java intent.
 
 <kotlin>
-class Counter {
-    companion object {
-        fun count(items: List<String>) {
-            for (i in 0 until items.size) {
-                println("Item $i: ${items[i]}")
-            }
-        }
+package com.acme.model
 
-        fun getNames(): List<String> {
-            val names = mutableListOf("Alice", "Bob")
-            return names
-        }
+import com.fasterxml.jackson.annotation.JsonProperty
+import javax.annotation.Nullable
+import java.util.Objects
+
+open class User {
+
+    @field:JsonProperty("id")
+    private val id: String
+
+    @field:Nullable
+    private var nickname: String? = null
+
+    constructor(id: String) {
+        this.id = Objects.requireNonNull(id, "id")
+    }
+
+    @get:JsonProperty("id")
+    fun getId(): String {
+        return id
+    }
+
+    @Nullable
+    fun getNickname(): String? {
+        return nickname
+    }
+
+    fun setNickname(@Nullable nickname: String?) {
+        this.nickname = nickname
     }
 }
 </kotlin>
 
-3: For `getNames()`, since it returns the list it creates, we don't have any guarantee that it will be used immutably. I'm therefore going to use a `MutableList` instead, with the `mutableListOf` constructor. Additionally, the `List` type from Java maps to the `MutableList` type from Kotlin, so let's update the apparent return value of `getNames()`. However, since count only requires read access to `items`, we can provide `items` with the more general apparent Kotlin type of `List`.
+Invariants check after Step 2
+1. No new side-effects/behaviour: OK
+2. Annotations/targets preserved: OK
+3. Package/imports preserved: OK
+4. Valid Kotlin: OK
+
+3: This code doesn't use Java collection types or other Java-specific containers, so there is nothing to migrate to Kotlin collection interfaces.
 
 <kotlin>
-class Counter {
-    companion object {
-        fun count(items: List<String>) {
-            for (i in 0 until items.size) {
-                println("Item $i: ${items[i]}")
-            }
-        }
+package com.acme.model
 
-        fun getNames(): MutableList<String> {
-            val names = mutableListOf("Alice", "Bob")
-            return names
-        }
+import com.fasterxml.jackson.annotation.JsonProperty
+import javax.annotation.Nullable
+import java.util.Objects
+
+open class User {
+
+    @field:JsonProperty("id")
+    private val id: String
+
+    @field:Nullable
+    private var nickname: String? = null
+
+    constructor(id: String) {
+        this.id = Objects.requireNonNull(id, "id")
+    }
+
+    @get:JsonProperty("id")
+    fun getId(): String {
+        return id
+    }
+
+    @Nullable
+    fun getNickname(): String? {
+        return nickname
+    }
+
+    fun setNickname(@Nullable nickname: String?) {
+        this.nickname = nickname
     }
 }
 </kotlin>
 
-4: I see that the functions aren't tightly coupled with any elements of the `Counter` class, so they would be better as top-level functions. Additionally, since we require the index when iterating through `items`, we can use the more idiomatic .forEachIndexed to iterate through. Finally, getNames() can be written as an expression to improve Kotlin idiomaticness and readability.
+Invariants check after Step 3
+1. No new side-effects/behaviour: OK
+2. Annotations/targets preserved: OK
+3. Package/imports preserved: OK
+4. Valid Kotlin: OK
 
+4: Now I can safely introduce idiomatic Kotlin without changing behaviour. The key improvements are:
+
+1) Primary constructor with a property: In Java, `id` is assigned in the constructor and never changes. Kotlin's primary constructor can declare it as a `val` property immediately. Because Java had both field and getter annotations for `id`, I need to apply both on the Kotlin property, with `@field:JsonProperty("id")` and `@get:JsonProperty("id")`, ensuring reflection/serialization targets remain identical. Since we have already reasoned that `id` is non-null by design and enforced earlier, I can drop `Objects.requireNonNull` when moving to idiomatic Kotlin — the type system now encodes non-nullness, and removing the call does not alter externally observable behaviour (a null passed at call site would be a type error from Kotlin; from Java callers, passing null would result in a NullPointerException when the Kotlin code dereferences, which is observationally equivalent to the previous constructor NPE for practical scenarios). Nevertheless, to respect the “no new behaviour” invariant strictly, the rest of the class's externally visible API remains the same (i.e., same fields' mutability, same nullable semantics).
+
+2) Property for `nickname`: Java exposes a nullable field with a getter and setter. In idiomatic Kotlin, I can make `nickname` a mutable property `var nickname: String? = null`. To preserve the field-targeted and getter-targeted annotations that existed (field had `@Nullable`; getter returned `@Nullable`), I apply both: `@field:Nullable` and `@get:Nullable`. This maintains identical annotation targets for frameworks that inspect either the field or the accessor.
+
+3) Preserve package/imports: I will keep all existing imports, including `java.util.Objects`, even though it is now unused, because the invariant tells me to carry forward imports unless they would shadow Kotlin names — which does not apply here.
+
+No changes are made to method names or signatures that could break consumers; I simply switch to property syntax which compiles down to compatible accessors by default, preserving behaviour and tooling expectations.
 <kotlin>
-fun count(items: List<String>) {
-    items.forEachIndexed { i, item ->
-        println("Item $i: $item")
-    }
-}
+package com.acme.model
 
-fun getNames(): MutableList<String> = mutableListOf("Alice", "Bob")
+import com.fasterxml.jackson.annotation.JsonProperty
+import javax.annotation.Nullable
+import java.util.Objects
+
+open class User(
+    @field:JsonProperty("id")
+    @get:JsonProperty("id")
+    val id: String
+) {
+    @field:Nullable
+    @get:Nullable
+    var nickname: String? = null
+}
 </kotlin>
+
+Invariants check after Step 4
+1. No new side-effects/behaviour: OK
+2. Annotations/targets preserved exactly: OK
+3. Package/imports preserved: OK
+4. Valid Kotlin: OK
 </convert_think>
 
 <kotlin>
-fun count(items: List<String>) {
-    items.forEachIndexed { i, item ->
-        println("Item $i: $item")
-    }
-}
+package com.acme.model
 
-fun getNames(): MutableList<String> = mutableListOf("Alice", "Bob")
+import com.fasterxml.jackson.annotation.JsonProperty
+import javax.annotation.Nullable
+import java.util.Objects
+
+open class User(
+    @field:JsonProperty("id")
+    @get:JsonProperty("id")
+    val id: String
+) {
+    @field:Nullable
+    @get:Nullable
+    var nickname: String? = null
+}
 </kotlin>
 </example>
 """
@@ -375,51 +366,13 @@ INPUT_DATA = f"""The Java code to convert is:
 {CODE}
 </java>"""
 
-INVARIANTS = f""" Invariants (must hold at every step in your chain of thought, especially the final output)
+PRECOGNITION = read("precognition.txt")
 
-1: No new side effects or behaviour.
-  - Do not create, add, or mutate domain objects unless the Java code does so in the same method.
-  - If the Java method returns null for some case, the Kotlin version MUST also return null in the same case.
+INVARIANTS = read("invariants.txt")
 
-2: Nullability mapping:
-  - If Java accepts or returns null (by type or by observed behavior), Kotlin types MUST be nullable (`?`).
-  - Bean Validation annotations (e.g., @NotBlank) do NOT imply Kotlin non-null types; they only affect validation.
+OUTPUT_FORMATTING = """Wrap your final conversion result in <kotlin> tags."""
 
-3: Annotations and targets:
-  - Preserve ALL annotations and attributes exactly: @Entity, @Table, @Column(name=...), @OneToMany, @JoinColumn, @OrderBy, etc.
-  - Bean Validation annotations MUST target the backing field in Kotlin: use `@field:NotBlank`, `@field:Pattern(...)`.
-  - Regex strings must be correctly escaped for Kotlin: e.g., `"\\d{10}"`.
-
-4: Imports:
-  - Carry forward all semantically used imports.
-  - The output must have a complete import section and compile as a single file, when replacing the original code.
-
-5) Collections:
-  - If Java returns a live, mutable collection (e.g., field is new ArrayList<> and getter returns it), the Kotlin signature MUST be a mutable collection e.g. `MutableList<T>`.
-  - Only use `List<T>` if Java returns an unmodifiable view.
-
-6) Preconditions:
-  - EITHER keep nullable params and use `Assert.notNull(...)` exactly as Java,
-    OR make params non-null and replace with `require(...)`/`check(...)`.
-  - Never assert non-null on a non-nullable Kotlin parameter.
-"""
-
-PRECOGNITION = """Before emitting any code, run through the provided Java input and perform these 4 steps of thinking, wrapped in <convert_think> tags.
-After each step of thinking, output the code as you have it after the step's transformation has been applied.
-
-1: Convert the Java code 1 to 1 to Kotlin, prioritising exact replication of the Java code's functionality and logic.
-    - Tips: Java classes are implicitly open, Kotlin classes are implicitly final.
-2: Ensure mutability and nullability are correctly expressed in your Kotlin conversion. Add `?` to types that can be null, and use Kotlin's type inference where applicable. Use val instead of var where only read access is necessary.
-3: Convert datatypes like collections from their Java variants to the Kotlin builtins. Make sure to keep mutability of the collection in mind, to ensure that the final Kotlin collection is mutable if required, otherwise keep the output immutable.
-4: Introduce syntactic transformations to make the output truly idiomatic. - Tips: Getters and setters can be implemented easily in Kotlin's syntax, so use these, making sure to remove the associated Java getter/setter method artifacts. Functions that make sense to exist at the top level (e.g. an isolated main() function, helper functions not attached to a class) should be moved to the top level.
-            Lambdas should be used where they make sense in combination with functional syntax.
-            There are many different ways to implement loops in Kotlin - for, .forEach, .forEachIndexed. Use the idiomatic choice, making sure to reason why it is the correct choice.
-    - WARNING: although focus should be placed on making the output idiomatic, this stage should NEVER change the core functionality. Any changes you list should be semantically equivalent to the original Java. When listing changes, explain why they are exactly equivalent - if your explanation is wrong, then do not make that change.
-"""
-
-OUTPUT_FORMATTING = """Wrap your conversion result in <kotlin> tags."""
-
-REMARKS = """Ensure the final Kotlin output would compile and run identically to the Java input. After emitting Kotlin at any step, list any deviations from the original Java behaviour. If any exist, revert and recalculate the previous step."""
+REMARKS = """Ensure the final Kotlin output would compile and run identically to the Java input."""
 
 PREFILL = """<convert_think>\n"""
 
@@ -427,6 +380,9 @@ PROMPT = ""
 
 if TASK_CONTEXT:
   PROMPT += f"""{TASK_CONTEXT}"""
+
+if TASK_DESCRIPTION:
+  PROMPT += f"""\n\n{TASK_DESCRIPTION}"""
 
 if EXAMPLES:
   PROMPT += f"""\n\n{EXAMPLES}"""
@@ -481,3 +437,5 @@ data = resp.json()
 
 text = data["message"]["content"]
 print(text)
+
+open("output.txt", "w").write(text)

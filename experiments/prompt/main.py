@@ -1,4 +1,4 @@
-CODE = """// 2025-07-23T08:55:18.029Z (logged at)
+OLD_CODE = """// 2025-07-23T08:55:18.029Z (logged at)
 
 /*
  * Copyright 2012-2025 the original author or authors.
@@ -176,6 +176,8 @@ public class Owner extends Person {
 
 }
 """
+
+CODE = open("input.java", "r").read()
 
 TASK_CONTEXT = """You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist."""
 

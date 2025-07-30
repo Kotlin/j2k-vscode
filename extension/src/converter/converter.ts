@@ -46,6 +46,18 @@ function countTokens(text: string) {
   return Math.ceil(text.length / 4);
 }
 
+function extractLastKotlinBlock(text: string): string | null {
+  const re = /<kotlin\b[^>]*>([\s\S]*?)<\/kotlin>/gi;
+  let match: RegExpExecArray | null;
+  let last: string | null = null;
+
+  while ((match = re.exec(text)) !== null) {
+    last = match[1];
+  }
+
+  return last?.trim() ?? null;
+}
+
 async function convertUsingLLM(
   javaCode: string,
   outputChannel: vscode.OutputChannel,

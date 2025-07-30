@@ -1,8 +1,14 @@
 import * as assert from "assert";
 import * as vscode from "vscode";
-import { execSync } from "child_process";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 import { convertToKotlin } from "../../converter";
+
+function getCase(name: string) {
+  const path = join(__dirname, "../../../src/test/unit/converter-cases", `${name}.java`)
+  return readFileSync(path, "utf-8");
+}
 
 function fakeOutput(): vscode.OutputChannel {
   const log: string[] = [];
@@ -55,11 +61,7 @@ suite("LLM testsuite", function () {
   // 1: Loses imports / uses the wrong imports
   test("imports surviving the conversion", async () => {
     // TODO: find a better example to test against
-    const java = `
-      import org.springframework.beans.factory.annotation.Autowired;
-      public class Foo { @Autowired Bar bar; }
-    `;
-    const kotlin = await runConversion(java);
+    const kotlin = await runConversion(getCase("Imports"));
 
     assert.match(
       kotlin,
@@ -71,13 +73,7 @@ suite("LLM testsuite", function () {
   // 2: Uses data classes where not required, which overcomplicates things.
   test("doesn't introduce unnecessary data class", async () => {
     // TODO: find a better example to test against
-    const java = `
-      public class PlainPojo {
-        private int id;
-        private String name;
-      }
-    `;
-    const kotlin = await runConversion(java);
+    const kotlin = await runConversion(getCase("DataClasses"));
     assert.ok(
       !/\bdata\s+class\b/.test(kotlin),
       "`data class` keyword should be absent"
@@ -86,62 +82,39 @@ suite("LLM testsuite", function () {
 
   // 3: Classes declared are final where not explicitly marked in Java as such
   test("converts non-final classes as open", async () => {
-    const java = "public class Sample {}";
-    const kotlin = await runConversion(java);
+    const kotlin = await runConversion(getCase("OpenClasses"));
     assert.ok(/\bopen\b/.test(kotlin));
   });
 
   // 4: ensure result is in kotlin
   test("generics converted; no raw List<T> semicolons", async () => {
-    const java = `
-      public interface OwnerRepository {
-        java.util.List<Owner> findAll();
-      }
-    `;
-    const kotlin = await runConversion(java);
+    const kotlin = await runConversion(getCase("Kotlin"));
     assert.ok(!/List<Owner>;\s*$/.test(kotlin), "Still looks like Java");
   });
 
   // 5: Sometimes generates closing remarks along with a random tag to close e.g. [/START_J2K] which is not real syntax specified within the prompt
   test("ensure output is only code", async () => {
     // TODO: find a better example to test against
-    const kotlin = await runConversion(
-      `public class Hello { public static void main(String[] a){} }`
-    );
+    const kotlin = await runConversion(getCase("Sentinel"));
     assert.ok(!/START_J2K/.test(kotlin));
     assert.ok(!/<\/?code>/i.test(kotlin));
   });
 
   // 6: Mixes up Java and Kotlin collections in regards to mutability
   test("preserves mutability", async () => {
-    const java = `
-      import java.util.List;
-      public class Owner { private List<Pet> pets; }
-    `;
-    const kotlin = await runConversion(java);
+    const kotlin = await runConversion(getCase("Mutability"));
     assert.match(kotlin, /\bMutableList<.*Pet.*>/);
   });
 
   // 7: Generates getters/setters when already auto-implemented by properties
   test("avoid redundant getters/setters", async () => {
-    const java = `
-      public class Person {
-        private String firstName;
-        public String getFirstName() { return firstName; }
-      }
-    `;
-    const kotlin = await runConversion(java);
+    const kotlin = await runConversion(getCase("GettersSetters"));
     assert.ok(!/fun\s+getFirstName\s*\(/.test(kotlin));
   });
 
   // 8: Hallucinates nonexistent Kotlin functions that exist in java (e.g. equalsIgnoreCase)
   test("no java exclusive functions", async () => {
-    const java = `
-      public class StringUtilsDemo {
-        boolean same(String a, String b){ return a.equalsIgnoreCase(b); }
-      }
-    `;
-    const kotlin = await runConversion(java);
+    const kotlin = await runConversion(getCase("RealMethods"));
     assert.ok(!/equalsIgnoreCase/.test(kotlin));
   });
 });

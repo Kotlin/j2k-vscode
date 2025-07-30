@@ -373,6 +373,35 @@ INPUT_DATA = f"""The Java code to convert is:
 {CODE}
 </java>"""
 
+INVARIANTS = f""" Invariants (must hold at every step in your chain of thought, especially the final output)
+
+1: No new side effects or behaviour.
+  - Do not create, add, or mutate domain objects unless the Java code does so in the same method.
+  - If the Java method returns null for some case, the Kotlin version MUST also return null in the same case.
+
+2: Nullability mapping:
+  - If Java accepts or returns null (by type or by observed behavior), Kotlin types MUST be nullable (`?`).
+  - Bean Validation annotations (e.g., @NotBlank) do NOT imply Kotlin non-null types; they only affect validation.
+
+3: Annotations and targets:
+  - Preserve ALL annotations and attributes exactly: @Entity, @Table, @Column(name=...), @OneToMany, @JoinColumn, @OrderBy, etc.
+  - Bean Validation annotations MUST target the backing field in Kotlin: use `@field:NotBlank`, `@field:Pattern(...)`.
+  - Regex strings must be correctly escaped for Kotlin: e.g., `"\\d{10}"`.
+
+4: Imports:
+  - Carry forward all semantically used imports.
+  - The output must have a complete import section and compile as a single file, when replacing the original code.
+
+5) Collections:
+  - If Java returns a live, mutable collection (e.g., field is new ArrayList<> and getter returns it), the Kotlin signature MUST be a mutable collection e.g. `MutableList<T>`.
+  - Only use `List<T>` if Java returns an unmodifiable view.
+
+6) Preconditions:
+  - EITHER keep nullable params and use `Assert.notNull(...)` exactly as Java,
+    OR make params non-null and replace with `require(...)`/`check(...)`.
+  - Never assert non-null on a non-nullable Kotlin parameter.
+"""
+
 PRECOGNITION = """Before emitting any code, run through the provided Java input and perform these 4 steps of thinking, wrapped in <convert_think> tags.
 After each step of thinking, output the code as you have it after the step's transformation has been applied.
 
@@ -383,11 +412,12 @@ After each step of thinking, output the code as you have it after the step's tra
 4: Introduce syntactic transformations to make the output truly idiomatic. - Tips: Getters and setters can be implemented easily in Kotlin's syntax, so use these, making sure to remove the associated Java getter/setter method artifacts. Functions that make sense to exist at the top level (e.g. an isolated main() function, helper functions not attached to a class) should be moved to the top level.
             Lambdas should be used where they make sense in combination with functional syntax.
             There are many different ways to implement loops in Kotlin - for, .forEach, .forEachIndexed. Use the idiomatic choice, making sure to reason why it is the correct choice.
+    - WARNING: although focus should be placed on making the output idiomatic, this stage should NEVER change the core functionality. Any changes you list should be semantically equivalent to the original Java. When listing changes, explain why they are exactly equivalent - if your explanation is wrong, then do not make that change.
 """
 
 OUTPUT_FORMATTING = """Wrap your conversion result in <kotlin> tags."""
 
-REMARKS = """Ensure the final Kotlin output would compile and run identically to the Java input."""
+REMARKS = """Ensure the final Kotlin output would compile and run identically to the Java input. After emitting Kotlin at any step, list any deviations from the original Java behaviour. If any exist, revert and recalculate the previous step."""
 
 PREFILL = """<convert_think>\n"""
 
@@ -401,6 +431,9 @@ if EXAMPLES:
 
 if INPUT_DATA:
   PROMPT += f"""\n\n{INPUT_DATA}"""
+
+if INVARIANTS:
+  PROMPT += f"""\n\n{INVARIANTS}"""
 
 if PRECOGNITION:
   PROMPT += f"""\n\n{PRECOGNITION}"""

@@ -6,16 +6,16 @@ import { MavenBuildSystem } from "./maven";
 export interface JVMBuildSystem {
   name: string;
 
-  needsKotlin(): Promise<boolean>
+  needsKotlin(): Promise<boolean>;
 
-  enableKotlin(): Promise<void>
+  enableKotlin(): Promise<void>;
 }
 
 async function hasFile(folder: vscode.WorkspaceFolder, glob: string) {
   const files = await vscode.workspace.findFiles(
     new vscode.RelativePattern(folder, glob),
     "**/build/**",
-    1 // max files to return
+    1, // max files to return
   );
 
   return files.length > 0;

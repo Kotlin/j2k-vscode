@@ -1,0 +1,2 @@
+dspy==2.6.27
+tree_sitter_language_pack==0.9.0

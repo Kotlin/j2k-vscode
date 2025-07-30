@@ -2,9 +2,9 @@ import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
 import { extensions } from "vscode";
-import { detectVCS } from "../vcs";
-import { GitFileRenamer } from "../vcs/git";
-import { StandardFileRenamer } from "../vcs/standard";
+import { detectVCS } from "../../vcs";
+import { GitFileRenamer } from "../../vcs/git";
+import { StandardFileRenamer } from "../../vcs/standard";
 
 interface FakeGitAPI {
   repositories: unknown[];

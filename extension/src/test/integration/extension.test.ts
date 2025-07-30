@@ -1,7 +1,7 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import { activate } from "../extension";
+import { activate } from "../../extension";
 
 suite("test extension", () => {
   let registerStub: sinon.SinonStub;

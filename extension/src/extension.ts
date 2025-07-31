@@ -162,11 +162,35 @@ export async function activate(context: vscode.ExtensionContext) {
         }
       }
 
-      await convertToKotlin(
-        javaCode,
-        outputChannel,
-        context,
-        onToken
+      await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: "J2K: Translating...",
+          cancellable: false,
+        },
+        async (progress) => {
+          let last = 0;
+
+          function onProgress(percentage: number, message?: string) {
+            const next = Math.max(0, Math.min(100, Math.floor(percentage)));
+            const increment = Math.max(0, next - last);
+
+            if (increment > 0) {
+              progress.report({ increment, message: message });
+              last = next;
+            } else if (message) {
+              progress.report({ message: message });
+            }
+          }
+
+          await convertToKotlin(
+            javaCode,
+            outputChannel,
+            context,
+            onToken,
+            onProgress,
+          );
+        }
       );
 
       // final flush of the buffer for the last tokens, but additionally,

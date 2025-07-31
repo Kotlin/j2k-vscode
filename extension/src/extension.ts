@@ -117,14 +117,73 @@ export async function activate(context: vscode.ExtensionContext) {
         (e) => e.document === kotlinBuf,
       )!;
 
-      const result = await convertToKotlin(
+      let buf = "";
+      let tokens = 0;
+      const TOKENS_PER_FLUSH = 20;
+
+      let insideCode = false;
+      let finalResult = "";
+      async function onToken(delta: string) {
+        buf += delta;
+
+        if (insideCode) {
+          tokens += 1;
+
+          // flush buffer
+          if (buf.includes("\n") || tokens >= TOKENS_PER_FLUSH) {
+            await kotlinEditor.edit(
+              (eb) =>
+                eb.insert(
+                  new vscode.Position(kotlinEditor.document.lineCount, 0),
+                  buf,
+                ),
+              { undoStopBefore: false, undoStopAfter: false },
+            );
+
+            finalResult += buf;
+
+            // reset buffer
+            buf = "";
+            tokens = 0;
+          }
+        } else {
+          const tagPosition = buf.indexOf("<<START_J2K>>\n");
+
+          if (tagPosition === -1) {
+            return;
+          }
+
+          outputChannel.appendLine("Code tag found");
+
+          insideCode = true;
+          tokens += 1;
+          
+          buf = buf.slice(tagPosition + "<<START_J2K>>\n".length);
+        }
+      }
+
+      await convertToKotlin(
         javaCode,
         outputChannel,
         context,
-        kotlinEditor,
+        onToken
       );
 
-      logFile(`${originalBase}_generated.kt`, result);
+      // final flush of the buffer for the last tokens, but additionally,
+      // if no sentinel token was found, we flush the entire buffer to
+      // output the full LLM response instead of leaving the user with
+      // nothing.
+      if (buf.length) {
+        await kotlinEditor.edit(
+          (eb) =>
+            eb.insert(new vscode.Position(kotlinEditor.document.lineCount, 0), buf),
+          { undoStopBefore: false, undoStopAfter: false },
+        );
+
+        finalResult += buf;
+      }
+
+      logFile(`${originalBase}_generated.kt`, finalResult);
 
       outputChannel.appendLine("Java to Kotlin Preview ready");
     },

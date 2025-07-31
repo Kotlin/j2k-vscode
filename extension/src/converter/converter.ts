@@ -50,7 +50,8 @@ async function convertUsingLLM(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
   context: vscode.ExtensionContext,
-  editor: vscode.TextEditor,
+  onToken: (token: string) => Promise<void>,
+  onProgress?: (p: number, msg?: string) => void
 ) {
   const model = await makeModel(context);
   outputChannel.appendLine(`convertUsingLLM: Using model ${model.model}`);
@@ -91,42 +92,18 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
       let upperBound = Math.ceil(countTokens(javaCode) * 0.95);
       let lastPercentage = 0;
 
-      let buf = "";
-      let tokens = 0;
-      let TOKENS_PER_FLUSH = 20;
-
       let insideCode = false;
 
       outputChannel.appendLine("convertUsingLLM: Starting LLM stream");
 
-      let finalResult = "";
-
       for await (const chunk of await chain.stream({ javaCode })) {
         const delta: string =
           typeof chunk === "string" ? chunk : (chunk.content as string);
-        buf += delta;
+
+        // call input callback
+        await onToken(delta);
 
         if (insideCode) {
-          tokens += 1;
-
-          // flush
-          if (buf.includes("\n") || tokens >= TOKENS_PER_FLUSH) {
-            await editor.edit(
-              (eb) =>
-                eb.insert(
-                  new vscode.Position(editor.document.lineCount, 0),
-                  buf,
-                ),
-              { undoStopBefore: false, undoStopAfter: false },
-            );
-
-            finalResult += buf;
-
-            // reset buffer
-            buf = "";
-            tokens = 0;
-          }
-
           generated += countTokens(delta);
 
           // never let the percentage hit more than 100
@@ -137,43 +114,13 @@ After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labe
             message: `${percentage.toFixed(0)}%`,
           });
           lastPercentage = percentage;
-        } else {
-          const tagPosition = buf.indexOf("<<START_J2K>>\n");
-
-          if (tagPosition === -1) {
-            continue;
-          }
-
-          // we are at the opening tag
-          outputChannel.appendLine("Code tag found");
-
-          insideCode = true;
-          tokens += 1;
-
-          buf = buf.slice(tagPosition + "<<START_J2K>>\n".length);
         }
-      }
-
-      // final flush of the buffer for the last tokens, but additionally,
-      // if no sentinel token was found, we flush the entire buffer to
-      // output the full LLM response instead of leaving the user with
-      // nothing.
-      if (buf.length) {
-        await editor.edit(
-          (eb) =>
-            eb.insert(new vscode.Position(editor.document.lineCount, 0), buf),
-          { undoStopBefore: false, undoStopAfter: false },
-        );
-
-        finalResult += buf;
       }
 
       progress.report({
         increment: 100 - lastPercentage,
         message: "LLM response received",
       });
-
-      return finalResult;
     },
   );
 }
@@ -182,7 +129,8 @@ export async function convertToKotlin(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
   context: vscode.ExtensionContext,
-  editor: vscode.TextEditor,
-): Promise<string> {
-  return await convertUsingLLM(javaCode, outputChannel, context, editor);
+  onToken: (token: string) => Promise<void>,
+  onProgress?: (p: number, msg?: string) => void
+) {
+  await convertUsingLLM(javaCode, outputChannel, context, onToken, onProgress);
 }

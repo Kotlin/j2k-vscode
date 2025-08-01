@@ -3,7 +3,6 @@ import * as assert from "assert";
 import * as path from "path";
 import * as fs from "fs";
 
-import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
 import { detectBuildSystem } from "./build-systems";
 import { MemoryContentProvider } from "./batch/memory";
@@ -182,134 +181,6 @@ export async function activate(context: vscode.ExtensionContext) {
     )
   );
 
-  const convertFile = vscode.commands.registerCommand(
-    "j2k.convertFile",
-    async (uri: vscode.Uri, resources?: vscode.Uri[]) => {
-      outputChannel.appendLine(`Converting ${uri.fsPath}`);
-
-      vcsHandler = await detectVCS(outputChannel);
-      outputChannel.appendLine(`VCS detected: ${vcsHandler.name}`);
-
-      const javaBuf = await vscode.workspace.openTextDocument(uri);
-      const javaCode = javaBuf.getText();
-      javaUri = uri;
-
-      const originalBase = path.basename(uri.fsPath, ".java");
-      logFile(`${originalBase}.java`, javaCode);
-
-      const kotlinBuf = await vscode.workspace.openTextDocument({
-        language: "kotlin",
-        content: "",
-      });
-      kotlinUri = kotlinBuf.uri;
-
-      await vscode.commands.executeCommand(
-        "vscode.diff",
-        javaBuf.uri,
-        kotlinBuf.uri,
-        "Java to Kotlin Preview",
-      );
-
-      const kotlinEditor = vscode.window.visibleTextEditors.find(
-        (e) => e.document === kotlinBuf,
-      )!;
-
-      let buf = "";
-      let tokens = 0;
-      const TOKENS_PER_FLUSH = 20;
-
-      let insideCode = false;
-      let finalResult = "";
-      async function onToken(delta: string) {
-        buf += delta;
-
-        if (insideCode) {
-          tokens += 1;
-
-          // flush buffer
-          if (buf.includes("\n") || tokens >= TOKENS_PER_FLUSH) {
-            await kotlinEditor.edit(
-              (eb) =>
-                eb.insert(
-                  new vscode.Position(kotlinEditor.document.lineCount, 0),
-                  buf,
-                ),
-              { undoStopBefore: false, undoStopAfter: false },
-            );
-
-            finalResult += buf;
-
-            // reset buffer
-            buf = "";
-            tokens = 0;
-          }
-        } else {
-          const tagPosition = buf.indexOf("<<START_J2K>>\n");
-
-          if (tagPosition === -1) {
-            return;
-          }
-
-          outputChannel.appendLine("Code tag found");
-
-          insideCode = true;
-          tokens += 1;
-          
-          buf = buf.slice(tagPosition + "<<START_J2K>>\n".length);
-        }
-      }
-
-      await vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: "J2K: Translating...",
-          cancellable: false,
-        },
-        async (progress) => {
-          let last = 0;
-
-          function onProgress(percentage: number, message?: string) {
-            const next = Math.max(0, Math.min(100, Math.floor(percentage)));
-            const increment = Math.max(0, next - last);
-
-            if (increment > 0) {
-              progress.report({ increment, message: message });
-              last = next;
-            } else if (message) {
-              progress.report({ message: message });
-            }
-          }
-
-          await convertToKotlin(
-            javaCode,
-            outputChannel,
-            context,
-            onToken,
-            onProgress,
-          );
-        }
-      );
-
-      // final flush of the buffer for the last tokens, but additionally,
-      // if no sentinel token was found, we flush the entire buffer to
-      // output the full LLM response instead of leaving the user with
-      // nothing.
-      if (buf.length) {
-        await kotlinEditor.edit(
-          (eb) =>
-            eb.insert(new vscode.Position(kotlinEditor.document.lineCount, 0), buf),
-          { undoStopBefore: false, undoStopAfter: false },
-        );
-
-        finalResult += buf;
-      }
-
-      logFile(`${originalBase}_generated.kt`, finalResult);
-
-      outputChannel.appendLine("Java to Kotlin Preview ready");
-    },
-  );
-
   const acceptAndReplace = vscode.commands.registerCommand(
     "j2k.acceptAndReplaceConversion",
     async () => {
@@ -366,7 +237,7 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
-  context.subscriptions.push(queueFile, convertFile, acceptAndReplace, cancelAndDiscard);
+  context.subscriptions.push(queueFile, acceptAndReplace, cancelAndDiscard);
 
   // only show our buttons when we are actively in the diff editor
   vscode.window.onDidChangeActiveTextEditor(

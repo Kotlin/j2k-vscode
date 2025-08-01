@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { Queue, Job } from "./queue";
 import { MemoryContentProvider } from "./memory";
 import { convertToKotlin } from "../converter";
+import path from "path";
 
 // for future prompts
 function extractKotlin(text: string) {
@@ -89,6 +90,9 @@ export class Worker {
     this.current = job;
     this.onChange.fire();
 
+    this.out.appendLine(`Worker: Started converting ${path.basename(job.javaUri.fsPath)}`);
+    const t0 = Date.now();
+
     try {
       const java = await vscode.workspace.openTextDocument(job.javaUri);
       let buf = "";
@@ -117,6 +121,7 @@ export class Worker {
         kotlinText: extracted,
         error: false,
       });
+      this.out.appendLine(`Worker: Finished converting ${path.basename(job.javaUri.fsPath)} in ${Date.now() - t0} milliseconds`);
     } catch (e: any) {
       this.completed.push({
         job: job,
@@ -142,6 +147,7 @@ export class Worker {
     if (i >= 0) {
       this.completed.splice(i,1);
       this.onChange.fire();
+      this.out.appendLine(`Worker: Removed completed file ${path.basename(result.fsPath)}`);
     }
   }
 }

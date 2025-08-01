@@ -132,7 +132,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
       const javaUris = await normaliseSelection(selected);
 
-      javaUris.forEach((uri: vscode.Uri) => { 
+      javaUris.forEach((uri: vscode.Uri) => {
+        outputChannel.append(`queueFile: Enqueued ${path.basename(uri.fsPath)}`);
+
         queue.enqueue(uri);
       });
 

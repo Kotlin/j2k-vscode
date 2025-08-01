@@ -7,6 +7,7 @@ import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
 import { detectBuildSystem } from "./build-systems";
 import { BaseListChatMessageHistory } from "@langchain/core/chat_history";
+import { MemoryContentProvider } from "./batch/memory";
 
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
   if (!editor) {
@@ -109,6 +110,10 @@ export async function activate(context: vscode.ExtensionContext) {
         await buildSystem.enableKotlin();
       });
   }
+
+  const mem = new MemoryContentProvider();
+  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem));
+  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("j2k-result", mem));
 
   const queueFile = vscode.commands.registerCommand(
     "j2k.queueFile",
@@ -305,7 +310,7 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
-  context.subscriptions.push(convertFile, acceptAndReplace, cancelAndDiscard);
+  context.subscriptions.push(queueFile, convertFile, acceptAndReplace, cancelAndDiscard);
 
   // only show our buttons when we are actively in the diff editor
   vscode.window.onDidChangeActiveTextEditor(

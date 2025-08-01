@@ -39,4 +39,8 @@ export class Queue {
   peek(): Job | undefined {
     return this.queued[0];
   }
+
+  toArray(): ReadonlyArray<Job> {
+    return this.queued;
+  }
 }

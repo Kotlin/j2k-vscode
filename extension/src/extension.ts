@@ -6,8 +6,9 @@ import * as fs from "fs";
 import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
 import { detectBuildSystem } from "./build-systems";
-import { BaseListChatMessageHistory } from "@langchain/core/chat_history";
 import { MemoryContentProvider } from "./batch/memory";
+import { Queue } from "./batch/queue";
+import { Worker } from "./batch/worker";
 
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
   if (!editor) {
@@ -17,7 +18,9 @@ function inDiff(editor: vscode.TextEditor | undefined): boolean {
   // when opening the diff, the right hand side is automatically focused
   // this is our kotlin window
   const inDiff =
-    vscode.window.activeTextEditor?.document?.uri.scheme === "untitled" &&
+    (vscode.window.activeTextEditor?.document?.uri.scheme === "untitled" ||
+      vscode.window.activeTextEditor?.document?.uri.scheme === "j2k-result"
+    ) &&
     vscode.window.activeTextEditor.viewColumn === undefined &&
     vscode.window.activeTextEditor?.document.languageId === "kotlin";
 
@@ -111,7 +114,11 @@ export async function activate(context: vscode.ExtensionContext) {
       });
   }
 
+  const queue = new Queue();
   const mem = new MemoryContentProvider();
+  const worker = new Worker(context, queue, mem, outputChannel);
+  worker.start();
+
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem));
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("j2k-result", mem));
 
@@ -123,8 +130,10 @@ export async function activate(context: vscode.ExtensionContext) {
       const javaUris = await normaliseSelection(selected);
 
       javaUris.forEach((uri: vscode.Uri) => { 
-        // enqueue here when queue exists
+        queue.enqueue(uri);
       });
+
+      vscode.commands.executeCommand("workbench.view.extension.j2k");
     }
   );
 

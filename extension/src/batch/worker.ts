@@ -32,6 +32,8 @@ export class Worker {
   private busy = false;
   current?: Job;
   completed: CompletedJob[] = [];
+  private changed = new vscode.EventEmitter<void>();
+  readonly onDidChange = this.changed.event;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -67,6 +69,7 @@ export class Worker {
 
     this.busy = true;
     this.current = job;
+    this.changed.fire();
 
     try {
       const java = await vscode.workspace.openTextDocument(job.javaUri);
@@ -104,6 +107,8 @@ export class Worker {
     } finally {
       this.current = undefined;
       this.busy = false;
+
+      this.changed.fire();
 
       this.maybeStart();
     }

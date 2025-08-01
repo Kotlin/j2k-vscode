@@ -56,7 +56,7 @@ async function normaliseSelection(input: vscode.Uri[]): Promise<vscode.Uri[]> {
     return process.platform === "win32" ? n.toLowerCase() : n;
   };
 
-  return [...new Map(out.map(u => [normaliseFsPath(u.fsPath), u])).values()];
+  return [...new Map(out.map((u) => [normaliseFsPath(u.fsPath), u])).values()];
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -73,8 +73,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
     const uri = editor.document.uri.toString();
 
-    const onRight = typeof kotlinUri !== "undefined" && uri === kotlinUri.toString();
-    const onLeft  = typeof javaUri   !== "undefined" && uri === javaUri.toString();
+    const onRight =
+      typeof kotlinUri !== "undefined" && uri === kotlinUri.toString();
+    const onLeft = typeof javaUri !== "undefined" && uri === javaUri.toString();
 
     return onLeft || onRight;
   }
@@ -116,9 +117,13 @@ export async function activate(context: vscode.ExtensionContext) {
   const worker = new Worker(context, queue, mem, outputChannel);
   worker.start();
 
-  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem));
-  context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("j2k-result", mem));
-  
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem),
+  );
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider("j2k-result", mem),
+  );
+
   const queueProvider = new QueueListProvider(queue, worker);
   vscode.window.registerTreeDataProvider("j2k.queue", queueProvider);
 
@@ -128,33 +133,42 @@ export async function activate(context: vscode.ExtensionContext) {
   const queueFile = vscode.commands.registerCommand(
     "j2k.queueFile",
     async (resource?: vscode.Uri, resources?: vscode.Uri[]) => {
-      const selected = resources?.length ? resources : (resource ? [resource] : []);
+      const selected = resources?.length
+        ? resources
+        : resource
+          ? [resource]
+          : [];
 
       const javaUris = await normaliseSelection(selected);
 
       javaUris.forEach((uri: vscode.Uri) => {
-        outputChannel.append(`queueFile: Enqueued ${path.basename(uri.fsPath)}`);
+        outputChannel.append(
+          `queueFile: Enqueued ${path.basename(uri.fsPath)}`,
+        );
 
         queue.enqueue(uri);
       });
 
       vscode.commands.executeCommand("workbench.view.extension.j2k");
-    }
+    },
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
       "j2k.queue.openProgress",
-      async (job: Job) => {        
+      async (job: Job) => {
         let document = await vscode.workspace.openTextDocument(job.progressUri);
-        
+
         if (document.languageId !== "kotlin") {
-          document = await vscode.languages.setTextDocumentLanguage(document, "kotlin");
+          document = await vscode.languages.setTextDocumentLanguage(
+            document,
+            "kotlin",
+          );
         }
-        
+
         await vscode.window.showTextDocument(document, { preview: true });
-      }
-    )
+      },
+    ),
   );
 
   context.subscriptions.push(
@@ -163,11 +177,18 @@ export async function activate(context: vscode.ExtensionContext) {
       async (completedJob: CompletedJob) => {
         vcsHandler = await detectVCS(outputChannel);
 
-        const left = await(vscode.workspace.openTextDocument(completedJob.job.javaUri));
-        let right = await vscode.workspace.openTextDocument(completedJob.resultUri);
+        const left = await vscode.workspace.openTextDocument(
+          completedJob.job.javaUri,
+        );
+        let right = await vscode.workspace.openTextDocument(
+          completedJob.resultUri,
+        );
 
         if (right.languageId !== "kotlin") {
-          right = await vscode.languages.setTextDocumentLanguage(right, "kotlin");
+          right = await vscode.languages.setTextDocumentLanguage(
+            right,
+            "kotlin",
+          );
         }
 
         javaUri = completedJob.job.javaUri;
@@ -177,10 +198,10 @@ export async function activate(context: vscode.ExtensionContext) {
           "vscode.diff",
           left.uri,
           right.uri,
-          "Java to Kotlin Preview"
+          "Java to Kotlin Preview",
         );
-      }
-    )
+      },
+    ),
   );
 
   const acceptAndReplace = vscode.commands.registerCommand(

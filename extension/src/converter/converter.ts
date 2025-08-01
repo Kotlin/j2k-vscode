@@ -51,7 +51,7 @@ async function convertUsingLLM(
   outputChannel: vscode.OutputChannel,
   context: vscode.ExtensionContext,
   onToken: (token: string) => Promise<void>,
-  onProgress?: (percentage: number, msg?: string) => void
+  onProgress?: (percentage: number, msg?: string) => void,
 ) {
   const model = await makeModel(context);
   outputChannel.appendLine(`convertUsingLLM: Using model ${model.model}`);
@@ -129,7 +129,7 @@ export async function convertToKotlin(
   outputChannel: vscode.OutputChannel,
   context: vscode.ExtensionContext,
   onToken: (token: string) => Promise<void>,
-  onProgress?: (p: number, msg?: string) => void
+  onProgress?: (p: number, msg?: string) => void,
 ) {
   await convertUsingLLM(javaCode, outputChannel, context, onToken, onProgress);
 }

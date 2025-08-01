@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 
-export type Status = "queued" | "running" | "done" | "error"
+export type Status = "queued" | "running" | "done" | "error";
 
 export interface Job {
   id: string;
@@ -16,12 +16,12 @@ export class Queue {
 
   enqueue(uri: vscode.Uri) {
     this.queued.push({
-      id: `${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       javaUri: uri,
       progressUri: vscode.Uri.parse(
-        `j2k-progress:${uri.fsPath.replace(/\.java$/i, ".kt")}`
+        `j2k-progress:${uri.fsPath.replace(/\.java$/i, ".kt")}`,
       ),
-      status: "queued" as const
+      status: "queued" as const,
     });
 
     this.eventEmitter.fire();

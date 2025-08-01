@@ -8,18 +8,18 @@ import path from "path";
 function extractKotlin(text: string) {
   const OPEN = "<kotlin>";
   const CLOSE = "</kotlin>";
-  
+
   const lower = text.toLowerCase();
   const closeIdx = lower.lastIndexOf(CLOSE);
   if (closeIdx === -1) {
     return text;
   }
-  
+
   const openIdx = lower.lastIndexOf(OPEN, closeIdx);
   if (openIdx === -1) {
     return text;
   }
-  
+
   const start = openIdx + OPEN.length;
   return text.slice(start, closeIdx);
 }
@@ -31,7 +31,7 @@ function extractKotlinOld(text: string) {
   if (tagPosition === -1) {
     return text;
   }
-  
+
   return text.slice(tagPosition + "<<START_J2K>>\n".length);
 }
 
@@ -53,7 +53,7 @@ export class Worker {
     private readonly context: vscode.ExtensionContext,
     private readonly queue: Queue,
     private readonly mem: MemoryContentProvider,
-    private readonly out: vscode.OutputChannel
+    private readonly out: vscode.OutputChannel,
   ) {
     queue.onDidChange(() => this.maybeStart());
   }
@@ -90,7 +90,9 @@ export class Worker {
     this.current = job;
     this.onChange.fire();
 
-    this.out.appendLine(`Worker: Started converting ${path.basename(job.javaUri.fsPath)}`);
+    this.out.appendLine(
+      `Worker: Started converting ${path.basename(job.javaUri.fsPath)}`,
+    );
     const t0 = Date.now();
 
     try {
@@ -104,11 +106,11 @@ export class Worker {
         async (token) => {
           buf += token;
           this.mem.set(job.progressUri, buf);
-        }
+        },
       );
 
       const resultUri = vscode.Uri.parse(
-        `j2k-result:${job.javaUri.fsPath.replace(/\.java$/i, ".kt")}`
+        `j2k-result:${job.javaUri.fsPath.replace(/\.java$/i, ".kt")}`,
       );
 
       const extracted = extractKotlinOld(buf);
@@ -121,7 +123,9 @@ export class Worker {
         kotlinText: extracted,
         error: false,
       });
-      this.out.appendLine(`Worker: Finished converting ${path.basename(job.javaUri.fsPath)} in ${Date.now() - t0} milliseconds`);
+      this.out.appendLine(
+        `Worker: Finished converting ${path.basename(job.javaUri.fsPath)} in ${Date.now() - t0} milliseconds`,
+      );
     } catch (e: any) {
       this.completed.push({
         job: job,
@@ -130,7 +134,9 @@ export class Worker {
         error: true,
       });
 
-      this.out.appendLine(`Error converting ${job.javaUri.fsPath}: ${String(e?.message ?? e)}`);
+      this.out.appendLine(
+        `Error converting ${job.javaUri.fsPath}: ${String(e?.message ?? e)}`,
+      );
     } finally {
       this.current = undefined;
       this.busy = false;
@@ -142,12 +148,16 @@ export class Worker {
   }
 
   removeCompleted(result: vscode.Uri) {
-    const i = this.completed.findIndex(c => c.resultUri.fsPath === result.fsPath);
+    const i = this.completed.findIndex(
+      (c) => c.resultUri.fsPath === result.fsPath,
+    );
 
     if (i >= 0) {
-      this.completed.splice(i,1);
+      this.completed.splice(i, 1);
       this.onChange.fire();
-      this.out.appendLine(`Worker: Removed completed file ${path.basename(result.fsPath)}`);
+      this.out.appendLine(
+        `Worker: Removed completed file ${path.basename(result.fsPath)}`,
+      );
     }
   }
 }

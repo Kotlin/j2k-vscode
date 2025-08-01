@@ -7,8 +7,10 @@ import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
 import { detectBuildSystem } from "./build-systems";
 import { MemoryContentProvider } from "./batch/memory";
-import { Queue } from "./batch/queue";
-import { Worker } from "./batch/worker";
+import { Job, Queue } from "./batch/queue";
+import { CompletedJob, Worker } from "./batch/worker";
+import { QueueListProvider } from "./batch/queue-view";
+import { CompletedListProvider } from "./batch/completed-view";
 
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
   if (!editor) {
@@ -121,6 +123,12 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem));
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider("j2k-result", mem));
+  
+  const queueProvider = new QueueListProvider(queue, worker);
+  vscode.window.registerTreeDataProvider("j2k.queue", queueProvider);
+
+  const completedProvider = new CompletedListProvider(worker);
+  vscode.window.registerTreeDataProvider("j2k.completed", completedProvider);
 
   const queueFile = vscode.commands.registerCommand(
     "j2k.queueFile",
@@ -136,6 +144,47 @@ export async function activate(context: vscode.ExtensionContext) {
       vscode.commands.executeCommand("workbench.view.extension.j2k");
     }
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "j2k.queue.openProgress",
+      async (job: Job) => {        
+        let document = await vscode.workspace.openTextDocument(job.progressUri);
+        
+        if (document.languageId !== "kotlin") {
+          document = await vscode.languages.setTextDocumentLanguage(document, "kotlin");
+        }
+        
+        await vscode.window.showTextDocument(document, { preview: true });
+      }
+    )
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "j2k.completed.openDiff",
+      async (completedJob: CompletedJob) => {
+        vcsHandler = await detectVCS(outputChannel);
+
+        const left = await(vscode.workspace.openTextDocument(completedJob.job.javaUri));
+        let right = await vscode.workspace.openTextDocument(completedJob.resultUri);
+
+        if (right.languageId !== "kotlin") {
+          right = await vscode.languages.setTextDocumentLanguage(right, "kotlin");
+        }
+
+        javaUri = completedJob.job.javaUri;
+        kotlinUri = completedJob.resultUri;
+
+        await vscode.commands.executeCommand(
+          "vscode.diff",
+          left.uri,
+          right.uri,
+          "Java to Kotlin Preview"
+        );
+      }
+    )
+  )
 
   const convertFile = vscode.commands.registerCommand(
     "j2k.convertFile",

@@ -26,6 +26,7 @@ export interface CompletedJob {
   job: Job;
   resultUri: vscode.Uri;
   kotlinText: string;
+  error: boolean;
 }
 
 export class Worker {
@@ -58,7 +59,7 @@ export class Worker {
       return;
     }
 
-    const job = this.queue.dequeue()
+    const job = this.queue.dequeue();
     if (!job) {
       return;
     }
@@ -95,12 +96,14 @@ export class Worker {
         job: job,
         resultUri,
         kotlinText: extractKotlin(buf),
+        error: false,
       });
     } catch (e: any) {
       this.completed.push({
         job: job,
         resultUri: job.progressUri,
         kotlinText: String(e?.message ?? e),
+        error: true,
       });
 
       this.out.appendLine(`Error converting ${job.javaUri.fsPath}: ${String(e?.message ?? e)}`);

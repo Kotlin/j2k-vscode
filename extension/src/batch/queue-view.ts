@@ -38,7 +38,7 @@ export class QueueListProvider implements vscode.TreeDataProvider<Job> {
       item.command = {
         command: "j2k.queue.openProgress",
         title: "Open Streaming Editor",
-        arguments: [job.id]
+        arguments: [job]
       }
     }
 

@@ -29,6 +29,11 @@
         "category": "J2K"
       },
       {
+        "command": "j2k.queueFile",
+        "title": "Convert to Kotlin",
+        "category": "J2K"
+      },
+      {
         "command": "j2k.acceptAndReplaceConversion",
         "title": "Accept Conversion and Replace",
         "category": "J2K"
@@ -62,8 +67,8 @@
     "menus": {
       "explorer/context": [
         {
-          "command": "j2k.convertFile",
-          "when": "resourceExtname == .java",
+          "command": "j2k.queueFile",
+          "when": "resourceExtname == .java || explorerResourceIsFolder",
           "group": "navigation"
         }
       ],

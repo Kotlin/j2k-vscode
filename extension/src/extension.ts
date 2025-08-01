@@ -6,6 +6,7 @@ import * as fs from "fs";
 import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
 import { detectBuildSystem } from "./build-systems";
+import { BaseListChatMessageHistory } from "@langchain/core/chat_history";
 
 function inDiff(editor: vscode.TextEditor | undefined): boolean {
   if (!editor) {
@@ -44,6 +45,30 @@ export function logFile(filename: string, content: string) {
   fs.writeFileSync(path.join(logsDir, filename), `${header}${content}`, {
     encoding: "utf8",
   });
+}
+
+async function normaliseSelection(input: vscode.Uri[]): Promise<vscode.Uri[]> {
+  const out: vscode.Uri[] = [];
+
+  for (const uri of input) {
+    const stat = await vscode.workspace.fs.stat(uri);
+
+    if ((stat.type & vscode.FileType.Directory) !== 0) {
+      const pattern = new vscode.RelativePattern(uri, "**/*.java");
+
+      const found = await vscode.workspace.findFiles(pattern);
+      out.push(...found);
+    } else if (/\.java$/i.test(uri.fsPath)) {
+      out.push(uri);
+    }
+  }
+
+  const normaliseFsPath = (p: string) => {
+    const n = path.normalize(p);
+    return process.platform === "win32" ? n.toLowerCase() : n;
+  }
+
+  return [...new Map(out.map(u => [normaliseFsPath(u.fsPath), u])).values()];
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -85,9 +110,22 @@ export async function activate(context: vscode.ExtensionContext) {
       });
   }
 
+  const queueFile = vscode.commands.registerCommand(
+    "j2k.queueFile",
+    async (resource?: vscode.Uri, resources?: vscode.Uri[]) => {
+      const selected = resources?.length ? resources : (resource ? [resource] : []);
+
+      const javaUris = await normaliseSelection(selected);
+
+      javaUris.forEach((uri: vscode.Uri) => { 
+        // enqueue here when queue exists
+      });
+    }
+  );
+
   const convertFile = vscode.commands.registerCommand(
     "j2k.convertFile",
-    async (uri: vscode.Uri) => {
+    async (uri: vscode.Uri, resources?: vscode.Uri[]) => {
       outputChannel.appendLine(`Converting ${uri.fsPath}`);
 
       vcsHandler = await detectVCS(outputChannel);

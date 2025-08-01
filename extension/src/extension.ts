@@ -12,23 +12,6 @@ import { CompletedJob, Worker } from "./batch/worker";
 import { QueueListProvider } from "./batch/queue-view";
 import { CompletedListProvider } from "./batch/completed-view";
 
-function inDiff(editor: vscode.TextEditor | undefined): boolean {
-  if (!editor) {
-    return false;
-  }
-
-  // when opening the diff, the right hand side is automatically focused
-  // this is our kotlin window
-  const inDiff =
-    (vscode.window.activeTextEditor?.document?.uri.scheme === "untitled" ||
-      vscode.window.activeTextEditor?.document?.uri.scheme === "j2k-result"
-    ) &&
-    vscode.window.activeTextEditor.viewColumn === undefined &&
-    vscode.window.activeTextEditor?.document.languageId === "kotlin";
-
-  return inDiff;
-}
-
 export function logFile(filename: string, content: string) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (workspaceFolders === undefined) {
@@ -83,6 +66,19 @@ export async function activate(context: vscode.ExtensionContext) {
   // and the accept/cancel commands
   let javaUri: vscode.Uri;
   let kotlinUri: vscode.Uri;
+
+  function inDiff(editor: vscode.TextEditor | undefined): boolean {
+    if (!editor) {
+      return false;
+    }
+
+    const uri = editor.document.uri.toString();
+
+    const onRight = typeof kotlinUri !== "undefined" && uri === kotlinUri.toString();
+    const onLeft  = typeof javaUri   !== "undefined" && uri === javaUri.toString();
+
+    return onLeft || onRight;
+  }
 
   // for general purpose logging
   const outputChannel = vscode.window.createOutputChannel("j2k-vscode");
@@ -184,7 +180,7 @@ export async function activate(context: vscode.ExtensionContext) {
         );
       }
     )
-  )
+  );
 
   const convertFile = vscode.commands.registerCommand(
     "j2k.convertFile",
@@ -355,6 +351,8 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand(
         "workbench.action.revertAndCloseActiveEditor",
       );
+
+      worker.removeCompleted(kotlinUri);
     },
   );
 

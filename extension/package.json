@@ -27,7 +27,7 @@
         {
           "id": "j2k",
           "title": "Java to Kotlin",
-          "icon": "$(symbol-key)"
+          "icon": "$(replace)"
         }
       ]
     },
@@ -124,12 +124,12 @@
       {
         "key": "ctrl+enter",
         "command": "j2k.acceptAndReplaceConversion",
-        "when": "inDiffEditor && editorLangId == kotlin && resourceScheme == untitled"
+        "when": "inDiffEditor && editorLangId == kotlin && (resourceScheme == untitled || resourceScheme == j2k-result)"
       },
       {
         "key": "escape",
         "command": "j2k.cancelConversion",
-        "when": "inDiffEditor && editorLangId == kotlin && resourceScheme == untitled"
+        "when": "inDiffEditor && editorLangId == kotlin && (resourceScheme == untitled || resourceScheme == j2k-result)"
       }
     ],
     "configuration": {

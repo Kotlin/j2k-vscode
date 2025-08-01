@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "path";
 import { Queue, Job } from "./queue";
 import { Worker } from "./worker";
 
@@ -26,20 +27,19 @@ export class QueueListProvider implements vscode.TreeDataProvider<Job> {
 
   getTreeItem(job: Job): vscode.TreeItem {
     const item = new vscode.TreeItem(
-      vscode.workspace.asRelativePath(job.javaUri)
+      path.basename(job.javaUri.fsPath),
     );
 
-    item.resourceUri = job.javaUri;
     const isRunning = this.worker.current?.id === job.id;
 
-    item.iconPath = isRunning ? new vscode.ThemeIcon("sync", new vscode.ThemeColor("testing.iconQueued")) : new vscode.ThemeIcon("history");
+    item.iconPath = isRunning ? new vscode.ThemeIcon("sync~spin", new vscode.ThemeColor("testing.iconQueued")) : new vscode.ThemeIcon("history");
     
     if (isRunning) {
       item.command = {
         command: "j2k.queue.openProgress",
         title: "Open Streaming Editor",
         arguments: [job]
-      }
+      };
     }
 
     return item;

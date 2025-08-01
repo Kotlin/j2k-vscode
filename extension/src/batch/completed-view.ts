@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
+import * as path from "path";
 import { Worker, CompletedJob } from "./worker";
-import { cp } from "fs";
 
 export class CompletedListProvider implements vscode.TreeDataProvider<CompletedJob> {
   private onChange = new vscode.EventEmitter<void>();
@@ -19,7 +19,9 @@ export class CompletedListProvider implements vscode.TreeDataProvider<CompletedJ
   }
   
   getTreeItem(completedJob: CompletedJob): vscode.TreeItem {
-    const item = new vscode.TreeItem(vscode.workspace.asRelativePath(completedJob.job.javaUri.fsPath));
+    const item = new vscode.TreeItem(
+      path.basename(completedJob.job.javaUri.fsPath),
+    );
 
     item.iconPath = new vscode.ThemeIcon(completedJob.kotlinText ? "check" : "warning");
     item.command = {

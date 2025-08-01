@@ -22,6 +22,27 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "j2k",
+          "title": "Java to Kotlin",
+          "icon": "$(symbol-key)"
+        }
+      ]
+    },
+    "views": {
+      "j2k": [
+        {
+          "id": "j2k.completed",
+          "name": "Converted Files"
+        },
+        {
+          "id": "j2k.queue",
+          "name": "Conversion Queue"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "j2k.convertFile",

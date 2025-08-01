@@ -66,7 +66,7 @@ async function normaliseSelection(input: vscode.Uri[]): Promise<vscode.Uri[]> {
   const normaliseFsPath = (p: string) => {
     const n = path.normalize(p);
     return process.platform === "win32" ? n.toLowerCase() : n;
-  }
+  };
 
   return [...new Map(out.map(u => [normaliseFsPath(u.fsPath), u])).values()];
 }

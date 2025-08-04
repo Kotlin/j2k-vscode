@@ -22,9 +22,30 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "j2k",
+          "title": "Java to Kotlin",
+          "icon": "$(replace)"
+        }
+      ]
+    },
+    "views": {
+      "j2k": [
+        {
+          "id": "j2k.completed",
+          "name": "Converted Files"
+        },
+        {
+          "id": "j2k.queue",
+          "name": "Conversion Queue"
+        }
+      ]
+    },
     "commands": [
       {
-        "command": "j2k.convertFile",
+        "command": "j2k.queueFile",
         "title": "Convert to Kotlin",
         "category": "J2K"
       },
@@ -62,8 +83,8 @@
     "menus": {
       "explorer/context": [
         {
-          "command": "j2k.convertFile",
-          "when": "resourceExtname == .java",
+          "command": "j2k.queueFile",
+          "when": "resourceExtname == .java || explorerResourceIsFolder",
           "group": "navigation"
         }
       ],
@@ -98,12 +119,12 @@
       {
         "key": "ctrl+enter",
         "command": "j2k.acceptAndReplaceConversion",
-        "when": "inDiffEditor && editorLangId == kotlin && resourceScheme == untitled"
+        "when": "inDiffEditor && editorLangId == kotlin && (resourceScheme == untitled || resourceScheme == j2k-result)"
       },
       {
         "key": "escape",
         "command": "j2k.cancelConversion",
-        "when": "inDiffEditor && editorLangId == kotlin && resourceScheme == untitled"
+        "when": "inDiffEditor && editorLangId == kotlin && (resourceScheme == untitled || resourceScheme == j2k-result)"
       }
     ],
     "configuration": {

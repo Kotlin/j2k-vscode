@@ -3,24 +3,13 @@ import * as assert from "assert";
 import * as path from "path";
 import * as fs from "fs";
 
-import { convertToKotlin } from "./converter";
 import { detectVCS, VCSFileRenamer } from "./vcs";
 import { detectBuildSystem } from "./build-systems";
-
-function inDiff(editor: vscode.TextEditor | undefined): boolean {
-  if (!editor) {
-    return false;
-  }
-
-  // when opening the diff, the right hand side is automatically focused
-  // this is our kotlin window
-  const inDiff =
-    vscode.window.activeTextEditor?.document?.uri.scheme === "untitled" &&
-    vscode.window.activeTextEditor.viewColumn === undefined &&
-    vscode.window.activeTextEditor?.document.languageId === "kotlin";
-
-  return inDiff;
-}
+import { MemoryContentProvider } from "./batch/memory";
+import { Job, Queue } from "./batch/queue";
+import { CompletedJob, Worker } from "./batch/worker";
+import { QueueListProvider } from "./batch/queue-view";
+import { CompletedListProvider } from "./batch/completed-view";
 
 export function logFile(filename: string, content: string) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -46,12 +35,50 @@ export function logFile(filename: string, content: string) {
   });
 }
 
+async function normaliseSelection(input: vscode.Uri[]): Promise<vscode.Uri[]> {
+  const out: vscode.Uri[] = [];
+
+  for (const uri of input) {
+    const stat = await vscode.workspace.fs.stat(uri);
+
+    if ((stat.type & vscode.FileType.Directory) !== 0) {
+      const pattern = new vscode.RelativePattern(uri, "**/*.java");
+
+      const found = await vscode.workspace.findFiles(pattern);
+      out.push(...found);
+    } else if (/\.java$/i.test(uri.fsPath)) {
+      out.push(uri);
+    }
+  }
+
+  const normaliseFsPath = (p: string) => {
+    const n = path.normalize(p);
+    return process.platform === "win32" ? n.toLowerCase() : n;
+  };
+
+  return [...new Map(out.map((u) => [normaliseFsPath(u.fsPath), u])).values()];
+}
+
 export async function activate(context: vscode.ExtensionContext) {
   // so that we don't have to discover open workspaces when accepting/rejecting,
   // we convey this state between the convert command
   // and the accept/cancel commands
   let javaUri: vscode.Uri;
   let kotlinUri: vscode.Uri;
+
+  function inDiff(editor: vscode.TextEditor | undefined): boolean {
+    if (!editor) {
+      return false;
+    }
+
+    const uri = editor.document.uri.toString();
+
+    const onRight =
+      typeof kotlinUri !== "undefined" && uri === kotlinUri.toString();
+    const onLeft = typeof javaUri !== "undefined" && uri === javaUri.toString();
+
+    return onLeft || onRight;
+  }
 
   // for general purpose logging
   const outputChannel = vscode.window.createOutputChannel("j2k-vscode");
@@ -85,49 +112,96 @@ export async function activate(context: vscode.ExtensionContext) {
       });
   }
 
-  const convertFile = vscode.commands.registerCommand(
-    "j2k.convertFile",
-    async (uri: vscode.Uri) => {
-      outputChannel.appendLine(`Converting ${uri.fsPath}`);
+  const queue = new Queue();
+  const mem = new MemoryContentProvider();
+  const worker = new Worker(context, queue, mem, outputChannel);
+  worker.start();
 
-      vcsHandler = await detectVCS(outputChannel);
-      outputChannel.appendLine(`VCS detected: ${vcsHandler.name}`);
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem),
+  );
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider("j2k-result", mem),
+  );
 
-      const javaBuf = await vscode.workspace.openTextDocument(uri);
-      const javaCode = javaBuf.getText();
-      javaUri = uri;
+  const queueProvider = new QueueListProvider(queue, worker);
+  vscode.window.registerTreeDataProvider("j2k.queue", queueProvider);
 
-      const originalBase = path.basename(uri.fsPath, ".java");
-      logFile(`${originalBase}.java`, javaCode);
+  const completedProvider = new CompletedListProvider(worker);
+  vscode.window.registerTreeDataProvider("j2k.completed", completedProvider);
 
-      const kotlinBuf = await vscode.workspace.openTextDocument({
-        language: "kotlin",
-        content: "",
+  const queueFile = vscode.commands.registerCommand(
+    "j2k.queueFile",
+    async (resource?: vscode.Uri, resources?: vscode.Uri[]) => {
+      const selected = resources?.length
+        ? resources
+        : resource
+          ? [resource]
+          : [];
+
+      const javaUris = await normaliseSelection(selected);
+
+      javaUris.forEach((uri: vscode.Uri) => {
+        outputChannel.append(
+          `queueFile: Enqueued ${path.basename(uri.fsPath)}`,
+        );
+
+        queue.enqueue(uri);
       });
-      kotlinUri = kotlinBuf.uri;
 
-      await vscode.commands.executeCommand(
-        "vscode.diff",
-        javaBuf.uri,
-        kotlinBuf.uri,
-        "Java to Kotlin Preview",
-      );
-
-      const kotlinEditor = vscode.window.visibleTextEditors.find(
-        (e) => e.document === kotlinBuf,
-      )!;
-
-      const result = await convertToKotlin(
-        javaCode,
-        outputChannel,
-        context,
-        kotlinEditor,
-      );
-
-      logFile(`${originalBase}_generated.kt`, result);
-
-      outputChannel.appendLine("Java to Kotlin Preview ready");
+      vscode.commands.executeCommand("workbench.view.extension.j2k");
     },
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "j2k.queue.openProgress",
+      async (job: Job) => {
+        let document = await vscode.workspace.openTextDocument(job.progressUri);
+
+        if (document.languageId !== "kotlin") {
+          document = await vscode.languages.setTextDocumentLanguage(
+            document,
+            "kotlin",
+          );
+        }
+
+        await vscode.window.showTextDocument(document, { preview: true });
+      },
+    ),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      "j2k.completed.openDiff",
+      async (completedJob: CompletedJob) => {
+        vcsHandler = await detectVCS(outputChannel);
+
+        const left = await vscode.workspace.openTextDocument(
+          completedJob.job.javaUri,
+        );
+        let right = await vscode.workspace.openTextDocument(
+          completedJob.resultUri,
+        );
+
+        if (right.languageId !== "kotlin") {
+          right = await vscode.languages.setTextDocumentLanguage(
+            right,
+            "kotlin",
+          );
+        }
+
+        javaUri = completedJob.job.javaUri;
+        kotlinUri = completedJob.resultUri;
+
+        await vscode.commands.executeCommand(
+          "vscode.diff",
+          left.uri,
+          right.uri,
+          "Java to Kotlin Preview",
+        );
+      },
+    ),
   );
 
   const acceptAndReplace = vscode.commands.registerCommand(
@@ -171,6 +245,8 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand(
         "workbench.action.revertAndCloseActiveEditor",
       );
+
+      worker.removeCompleted(kotlinUri);
     },
   );
 
@@ -184,7 +260,7 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
-  context.subscriptions.push(convertFile, acceptAndReplace, cancelAndDiscard);
+  context.subscriptions.push(queueFile, acceptAndReplace, cancelAndDiscard);
 
   // only show our buttons when we are actively in the diff editor
   vscode.window.onDidChangeActiveTextEditor(

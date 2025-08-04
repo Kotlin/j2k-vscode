@@ -1,14 +1,15 @@
 import { ChatOllama } from "@langchain/ollama";
 import { ChatOpenAI } from "@langchain/openai";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RunnableSequence } from "@langchain/core/runnables";
+
+import { getPrompt } from "./prompt";
 
 import * as vscode from "vscode";
 
 async function makeModel(context: vscode.ExtensionContext) {
   const cfg = vscode.workspace.getConfiguration("j2k");
 
-  const model = cfg.get<string>("model", "codellama:instruct");
+  const model = cfg.get<string>("model", "deepseek-r1:8b");
   const provider = cfg.get<string>("provider", "local-ollama");
 
   const apiKey = (await context.secrets.get("j2k.apiKey")) ?? "";
@@ -46,6 +47,21 @@ function countTokens(text: string) {
   return Math.ceil(text.length / 4);
 }
 
+<<<<<<< HEAD
+=======
+export function extractLastKotlinBlock(text: string): string | null {
+  const re = /<kotlin\b[^>]*>([\s\S]*?)<\/kotlin>/gi;
+  let match: RegExpExecArray | null;
+  let last: string | null = null;
+
+  while ((match = re.exec(text)) !== null) {
+    last = match[1];
+  }
+
+  return last?.trim() ?? null;
+}
+
+>>>>>>> 6dfafeb (wire new prompt)
 async function convertUsingLLM(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
@@ -56,21 +72,7 @@ async function convertUsingLLM(
   const model = await makeModel(context);
   outputChannel.appendLine(`convertUsingLLM: Using model ${model.model}`);
 
-  const systemPrompt: string = `
-Translate the given Java code to Kotlin.
-Return only the translated Kotlin code, no extra comments.
-Return the code text after the following sentinel token, written exactly as <<START_J2K>>.
-After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labels or explanations.
-`.trim();
-
-  const prompt = ChatPromptTemplate.fromMessages([
-    ["system", systemPrompt],
-    [
-      "human",
-      ["Java source code we want to translate.\n", "{javaCode}"].join(""),
-    ],
-  ]);
-
+  const prompt = getPrompt(javaCode);
   const chain = RunnableSequence.from([prompt, model]);
 
   outputChannel.appendLine(

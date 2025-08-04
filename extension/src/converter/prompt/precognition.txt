@@ -1,0 +1,43 @@
+Before emitting any code, run through the provided Java input and perform these 4 steps of thinking, wrapped in <convert_think> tags.
+After each step of thinking, output the code as you have it in <kotlin> tags after the step's transformation has been applied.
+
+<step>
+  1: Convert the Java code 1 to 1 into Kotlin, prioritising faithfulness to the original Java semantics, to replicate the Java code's functionality and logic exactly.
+
+  <rule>
+    Java classes that are implicitly open MUST be converted as Kotlin classes that are explicitly open, using the `open` keyword.
+  </rule>
+  <rule>
+    To convert Java constructors that inject into fields, use the Kotlin primary constructor. Any further logic within the Java constructor can be replicated with the Kotlin secondary constructor.
+  </rule>
+</step>
+
+<step>
+  2: Check that mutability and nullability are correctly expressed in your Kotlin conversion. Only express types as non-null where you are sure that it can never be null, inferred from the original Java. Use `val` instead of `var` where you see variables that are never modified.
+
+  <rule>
+    If you see a logical assertion that a value is not null, this shows that the author has considered that the value can never be null. Use a non-null type in this case, and remove the logical assertion.
+  </rule>
+  <rule>
+    In all other cases, preserve the fact that types can be null in Java by using the Kotlin nullable version of that type.
+  </rule>
+</step>
+
+<step>
+  3: Convert datatypes like collections from their Java variants to the Kotlin variants.
+
+  <rule>
+    For Java collections like `List` that are mutable by default, always use the Kotlin `MutableList`, unless you see explicitly that the Java code uses an immutable wrapper - in this case, use the Kotlin `List` (and so on for other collections like `Set`, `Map` etc.)
+  </rule>
+</step>
+
+<step>
+  4: Introduce syntactic transformations to make the output truly idiomatic.
+
+  <rule>
+    Where getters and setters are defined as methods in Java, use the Kotlin syntax to replace these methods with a more idiomatic version.
+  </rule>
+  <rule>
+    Lambdas should be used where they can simplify code complexity while replicating the exact behaviour of the previous code.
+  </rule>
+</step>

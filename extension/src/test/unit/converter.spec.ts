@@ -1,5 +1,3 @@
-// TODO: fix new converter signature
-
 // import * as assert from "assert";
 // import * as vscode from "vscode";
 // import { readFileSync } from "fs";

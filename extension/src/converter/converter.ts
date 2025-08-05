@@ -20,6 +20,7 @@ async function makeModel(context: vscode.ExtensionContext) {
         baseUrl: cfg.get<string>("ollama.baseUrl", "http://localhost:11434"),
         model: model,
         temperature: 0,
+        numCtx: 8192 * 2
       });
     case "openrouter":
       return new ChatOpenAI({
@@ -47,16 +48,23 @@ function countTokens(text: string) {
   return Math.ceil(text.length / 4);
 }
 
-export function extractLastKotlinBlock(text: string): string {
-  const re = /<kotlin\b[^>]*>([\s\S]*?)<\/kotlin>/gi;
-  let match: RegExpExecArray | null;
-  let last: string | null = null;
+export function extractLastKotlinBlock(text: string) {
+  const OPEN = "<kotlin>";
+  const CLOSE = "</kotlin>";
 
-  while ((match = re.exec(text)) !== null) {
-    last = match[1];
+  const lower = text.toLowerCase();
+  const closeIdx = lower.lastIndexOf(CLOSE);
+  if (closeIdx === -1) {
+    return text;
   }
 
-  return last?.trim() ?? text;
+  const openIdx = lower.lastIndexOf(OPEN, closeIdx);
+  if (openIdx === -1) {
+    return text;
+  }
+
+  const start = openIdx + OPEN.length;
+  return text.slice(start, closeIdx);
 }
 
 async function convertUsingLLM(

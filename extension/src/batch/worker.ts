@@ -1,28 +1,8 @@
 import * as vscode from "vscode";
 import { Queue, Job } from "./queue";
 import { MemoryContentProvider } from "./memory";
-import { convertToKotlin } from "../converter";
+import { convertToKotlin, extractLastKotlinBlock } from "../converter";
 import path from "path";
-
-// for future prompts
-function extractKotlin(text: string) {
-  const OPEN = "<kotlin>";
-  const CLOSE = "</kotlin>";
-
-  const lower = text.toLowerCase();
-  const closeIdx = lower.lastIndexOf(CLOSE);
-  if (closeIdx === -1) {
-    return text;
-  }
-
-  const openIdx = lower.lastIndexOf(OPEN, closeIdx);
-  if (openIdx === -1) {
-    return text;
-  }
-
-  const start = openIdx + OPEN.length;
-  return text.slice(start, closeIdx);
-}
 
 // for current prompt
 function extractKotlinOld(text: string) {
@@ -113,7 +93,7 @@ export class Worker {
         `j2k-result:${job.javaUri.fsPath.replace(/\.java$/i, ".kt")}`,
       );
 
-      const extracted = extractKotlinOld(buf);
+      const extracted = extractLastKotlinBlock(buf);
       this.mem.set(resultUri, extracted);
       this.mem.clear(job.progressUri);
 

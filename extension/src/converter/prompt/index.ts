@@ -21,11 +21,14 @@ ${javaCode}
 </java>`;
 
   const systemContent = [
-    TASK_CONTEXT,
-    TASK_DESCRIPTION,
-  ].join("\n\n");
+    "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist. ",
+    "Follow the four-step conversion (<convert_think>) and output final code in <kotlin> tags. ",
+    "Preserve behavior and API, prefer idiomatic Kotlin when safe."
+  ].join("");
 
   const humanContent = [
+    TASK_CONTEXT,
+    TASK_DESCRIPTION,
     EXAMPLES,
     INPUT_DATA,
     INVARIANTS,
@@ -35,9 +38,9 @@ ${javaCode}
   ].join("\n\n");
 
   return ChatPromptTemplate.fromMessages([
-    ["system", systemContent],
-    ["human", humanContent],
-    ["assistant", PREFILL]
+    { role: "system", content: systemContent },
+    { role: "human", content: humanContent },
+    { role: "assistant", content: PREFILL }
   ], {
     templateFormat: "mustache",
     validateTemplate: false

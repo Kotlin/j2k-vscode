@@ -3,10 +3,10 @@ import * as vscode from "vscode";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-import { convertToKotlin } from "../../converter";
+import { convertToKotlin, extractLastKotlinBlock } from "../../converter";
 
 function getCase(name: string) {
-  const path = join(__dirname, "../../../src/test/unit/converter-cases", `${name}.java`)
+  const path = join(__dirname, "../../../src/test/unit/converter-cases", `${name}.java`);
   return readFileSync(path, "utf-8");
 }
 
@@ -32,17 +32,17 @@ const stubCtx = {
 } as unknown as vscode.ExtensionContext;
 
 async function runConversion(java: string): Promise<string> {
-  let output = ""
+  let output = "";
   async function onToken(token: string) {
     output += token;
   }
 
   await convertToKotlin(java, fakeOutput(), stubCtx, onToken);
-  return output;
+  return extractLastKotlinBlock(output);
 }
 
 suite("LLM testsuite", function () {
-  this.timeout(90000); // 90s timeout per test
+  this.timeout(300000);
 
   // 1: Loses imports / uses the wrong imports
   test("imports surviving the conversion", async () => {

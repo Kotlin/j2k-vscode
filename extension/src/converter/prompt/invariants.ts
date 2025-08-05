@@ -1,4 +1,4 @@
-In each stage of your chain of thought, the following invariants must hold.
+export const INVARIANTS = `In each stage of your chain of thought, the following invariants must hold.
 
 <invariant>
   1: No new side-effects or behaviour.
@@ -26,3 +26,4 @@ In each stage of your chain of thought, the following invariants must hold.
 </invariant>
 
 After each stage, after the updated conversion code has been emitted, go through each of these invariants, listing the ones that no longer hold after this step. If any exist, revert to the previous step and recalculate the current step from the top.
+`;

@@ -47,7 +47,7 @@ function countTokens(text: string) {
   return Math.ceil(text.length / 4);
 }
 
-export function extractLastKotlinBlock(text: string): string | null {
+export function extractLastKotlinBlock(text: string): string {
   const re = /<kotlin\b[^>]*>([\s\S]*?)<\/kotlin>/gi;
   let match: RegExpExecArray | null;
   let last: string | null = null;
@@ -56,7 +56,7 @@ export function extractLastKotlinBlock(text: string): string | null {
     last = match[1];
   }
 
-  return last?.trim() ?? null;
+  return last?.trim() ?? text;
 }
 
 async function convertUsingLLM(

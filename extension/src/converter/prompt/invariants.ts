@@ -1,0 +1,29 @@
+export const INVARIANTS = `In each stage of your chain of thought, the following invariants must hold.
+
+<invariant>
+  1: No new side-effects or behaviour.
+</invariant>
+<invariant>
+  2: Preserve all annotations and targets exactly.
+
+  <rule>
+    Annotations must target the backing field in Kotlin where they targeted the field in Java.
+  </rule>
+</invariant>
+<invariant>
+  3: Preserve the package declaration and all imports.
+
+  <rule>
+    Carry forwards every single import, adding no new imports. Only remove imports where they would shadow Kotlin names <example>java.util.List shadows Kotlin's List</example>
+  </rule>
+</invariant>
+<invariant>
+  4: Ensure the output result is in Kotlin.
+
+  <rule>
+    The emitted code must be syntactically valid Kotlin.
+  </rule>
+</invariant>
+
+After each stage, after the updated conversion code has been emitted, go through each of these invariants, listing the ones that no longer hold after this step. If any exist, revert to the previous step and recalculate the current step from the top.
+`;

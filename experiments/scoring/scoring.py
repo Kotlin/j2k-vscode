@@ -529,10 +529,19 @@ def get_score(base=0) -> float:
   """
   return normalised score of percentage of tests passing, truncated to `base` if no compilation (default=0)
   """
+  empty = {
+    "tests": 0,
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "runnable": 0,
+    "passed": 0,
+  }
+
   try:
     subprocess.run(["./gradlew", "clean"], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   except:
-    return float(base)
+    return float(base), empty
 
   subprocess.run(
     ["./gradlew", "test", "--no-daemon", "--continue", "--rerun-tasks"],
@@ -580,7 +589,7 @@ def get_score(base=0) -> float:
   
   runnable = total_tests - total_skips
   if runnable <= 0:
-    return float(base)
+    return float(base), empty
   
   passed = runnable - (total_fails + total_errs)
   score = max(0.0, min(1.0, passed / runnable))
@@ -599,6 +608,14 @@ def get_score(base=0) -> float:
 
 log_dir = pathlib.Path("logs")
 log_dir.mkdir(exist_ok=True)
+
+already_checked = []
+scores_path = "scores.txt"
+scores_path_obj = pathlib.Path(scores_path)
+
+if scores_path_obj.exists():
+  with scores_path_obj.open("r") as f:
+    already_checked = [line.split(" ")[0][:-1] for line in f.readlines()]
 
 for file in get_java_files("src/"):
   if "test" not in str(file).lower():
@@ -621,8 +638,8 @@ for file in get_java_files("src/"):
       (log_dir/file.name).write_text(java_code)
       (log_dir/kotlin_path.name).write_text(conversion_output)
 
-      with open("scores.txt", "a") as f:
-        f.write(f"{file.name}: score={score} (ran {summary['runnable']} tests, {summary['passed']} passing)")
+      with open(scores_path, "a") as f:
+        f.write(f"{file.name}: score={score} (ran {summary['runnable']} tests, {summary['passed']} passing)\n")
 
       pass
     finally:
@@ -631,3 +648,5 @@ for file in get_java_files("src/"):
 
       if kotlin_path.exists():
         kotlin_path.unlink()
+
+

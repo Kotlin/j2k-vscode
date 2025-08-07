@@ -17,7 +17,7 @@ import java.util.Objects;
 public class DateGreeter {
     public static void greet(String name) {
         String who = (name != null) ? name : "Guest";
-        System.out.println("Hello, " + who + " — today is " + LocalDate.now());
+        System.out.println("Hello, " + who + " ÔÇö today is " + LocalDate.now());
     }
 }
 </java>
@@ -35,7 +35,7 @@ open class DateGreeter {
     companion object {
         fun greet(name: String?) {
             var who = if (name != null) name else "Guest"
-            println("Hello, " + who + " — today is " + LocalDate.now())
+            println("Hello, " + who + " ÔÇö today is " + LocalDate.now())
         }
     }
 }
@@ -59,7 +59,7 @@ open class DateGreeter {
     companion object {
         fun greet(name: String?) {
             val who = if (name != null) name else "Guest"
-            println("Hello, " + who + " — today is " + LocalDate.now())
+            println("Hello, " + who + " ÔÇö today is " + LocalDate.now())
         }
     }
 }
@@ -83,7 +83,7 @@ open class DateGreeter {
     companion object {
         fun greet(name: String?) {
             val who = if (name != null) name else "Guest"
-            println("Hello, " + who + " — today is " + LocalDate.now())
+            println("Hello, " + who + " ÔÇö today is " + LocalDate.now())
         }
     }
 }
@@ -104,7 +104,7 @@ import java.time.LocalDate
 import java.util.Objects
 
 fun greet(name: String?) {
-    println("Hello, ${name ?: "Guest"} — today is ${LocalDate.now()}")
+    println("Hello, ${name ?: "Guest"} ÔÇö today is ${LocalDate.now()}")
 }
 </kotlin>
 
@@ -122,7 +122,7 @@ import java.time.LocalDate
 import java.util.Objects
 
 fun greet(name: String?) {
-    println("Hello, ${name ?: "Guest"} — today is ${LocalDate.now()}")
+    println("Hello, ${name ?: "Guest"} ÔÇö today is ${LocalDate.now()}")
 }
 </kotlin>
 </example>
@@ -171,7 +171,7 @@ The Java code has:
 - A nullable field `nickname` with `@Nullable` on the field. That maps to a Kotlin nullable type `String?`, and I must use `@field:Nullable` to target the field exactly. There is also a `@Nullable` on the getter's return in Java; in Kotlin for a method, I can annotate the function (or later, if it's a property, I'll use `@get:Nullable`).
 - The constructor enforces non-null for `id` using `Objects.requireNonNull`. For a literal 1:1 step, I'll keep that call as-is to preserve exact behaviour and exception text.
 
-I will keep explicit getters and setters (rather than properties) in this step to avoid any behavioural or reflective API change. This adheres to “no new side-effects or behaviour” and maintains method shapes exactly.
+I will keep explicit getters and setters (rather than properties) in this step to avoid any behavioural or reflective API change. This adheres to ÔÇ£no new side-effects or behaviourÔÇØ and maintains method shapes exactly.
 
 <kotlin>
 package com.acme.model
@@ -306,11 +306,11 @@ Invariants check after Step 3
 
 4: Now I can safely introduce idiomatic Kotlin without changing behaviour. The key improvements are:
 
-1) Primary constructor with a property: In Java, `id` is assigned in the constructor and never changes. Kotlin's primary constructor can declare it as a `val` property immediately. Because Java had both field and getter annotations for `id`, I need to apply both on the Kotlin property, with `@field:JsonProperty("id")` and `@get:JsonProperty("id")`, ensuring reflection/serialization targets remain identical. Since we have already reasoned that `id` is non-null by design and enforced earlier, I can drop `Objects.requireNonNull` when moving to idiomatic Kotlin — the type system now encodes non-nullness, and removing the call does not alter externally observable behaviour (a null passed at call site would be a type error from Kotlin; from Java callers, passing null would result in a NullPointerException when the Kotlin code dereferences, which is observationally equivalent to the previous constructor NPE for practical scenarios). Nevertheless, to respect the “no new behaviour” invariant strictly, the rest of the class's externally visible API remains the same (i.e., same fields' mutability, same nullable semantics).
+1) Primary constructor with a property: In Java, `id` is assigned in the constructor and never changes. Kotlin's primary constructor can declare it as a `val` property immediately. Because Java had both field and getter annotations for `id`, I need to apply both on the Kotlin property, with `@field:JsonProperty("id")` and `@get:JsonProperty("id")`, ensuring reflection/serialization targets remain identical. Since we have already reasoned that `id` is non-null by design and enforced earlier, I can drop `Objects.requireNonNull` when moving to idiomatic Kotlin ÔÇö the type system now encodes non-nullness, and removing the call does not alter externally observable behaviour (a null passed at call site would be a type error from Kotlin; from Java callers, passing null would result in a NullPointerException when the Kotlin code dereferences, which is observationally equivalent to the previous constructor NPE for practical scenarios). Nevertheless, to respect the ÔÇ£no new behaviourÔÇØ invariant strictly, the rest of the class's externally visible API remains the same (i.e., same fields' mutability, same nullable semantics).
 
 2) Property for `nickname`: Java exposes a nullable field with a getter and setter. In idiomatic Kotlin, I can make `nickname` a mutable property `var nickname: String? = null`. To preserve the field-targeted and getter-targeted annotations that existed (field had `@Nullable`; getter returned `@Nullable`), I apply both: `@field:Nullable` and `@get:Nullable`. This maintains identical annotation targets for frameworks that inspect either the field or the accessor.
 
-3) Preserve package/imports: I will keep all existing imports, including `java.util.Objects`, even though it is now unused, because the invariant tells me to carry forward imports unless they would shadow Kotlin names — which does not apply here.
+3) Preserve package/imports: I will keep all existing imports, including `java.util.Objects`, even though it is now unused, because the invariant tells me to carry forward imports unless they would shadow Kotlin names ÔÇö which does not apply here.
 
 No changes are made to method names or signatures that could break consumers; I simply switch to property syntax which compiles down to compatible accessors by default, preserving behaviour and tooling expectations.
 <kotlin>
@@ -619,6 +619,9 @@ if scores_path_obj.exists():
 
 for file in get_java_files("src/"):
   if "test" not in str(file).lower():
+    if file.name in already_checked:
+      continue
+
     # convert file to kotlin
     java_code = file.read_text()
     file.unlink()
@@ -648,5 +651,3 @@ for file in get_java_files("src/"):
 
       if kotlin_path.exists():
         kotlin_path.unlink()
-
-

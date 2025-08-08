@@ -130,6 +130,9 @@
     "configuration": {
       "title": "Java to Kotlin converter",
       "properties": {
+        "j2k.apiKey": {
+          "markdownDescription": "To save your API key into VS Code secrets, click: [Set/Update API key](command:j2k.setApiKey)"
+        },
         "j2k.provider": {
           "type": "string",
           "enum": [

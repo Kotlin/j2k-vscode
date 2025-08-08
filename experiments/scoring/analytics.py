@@ -1,4 +1,16 @@
 import re
+import glob
+from pygments.lexers.jvm import KotlinLexer
+from pygments.token import Token
+from pygments import lex
+
+from pathlib import Path
+
+def strip_kotlin_comments(source: str) -> str:
+    tokens = lex(source, KotlinLexer())
+    return "".join(tok_text
+                   for tok_type, tok_text in tokens
+                   if tok_type not in Token.Comment)
 
 def parse_test_results(report_text):
   results = []
@@ -20,23 +32,43 @@ def parse_test_results(report_text):
 
   return results
 
-results = parse_test_results(open("scores.txt", "r").read())
-num_cases = len(results)
+print("==========" * 2)
+for score_path in glob.glob("v[0-9]*/scores.txt"):
+  results = parse_test_results(open(score_path, "r").read())
+  num_cases = len(results)
+  # how many compiled
 
-# how many compiled
+  compiled_tests = list(filter(lambda x: x["tests_run"] != 0, results))
+  num_compiled = len(compiled_tests)
 
-compiled_tests = list(filter(lambda x: x["tests_run"] != 0, results))
-num_compiled = len(compiled_tests)
+  # average score among those that compiled
 
-# average score among those that compiled
+  total_score_compiled = sum([x["score"] for x in compiled_tests])
 
-total_score_compiled = sum([x["score"] for x in compiled_tests])
+  # how many passed 100%
 
-# how many passed 100%
+  num_hundred_percent = len(list(filter(lambda x: x["tests_run"] == x["tests_passed"], compiled_tests)))
 
-num_hundred_percent = len(list(filter(lambda x: x["tests_run"] == x["tests_passed"], compiled_tests)))
-
-print(f"""{num_cases} files were analysed
+  print(f"""{num_cases} files were analysed
 {num_compiled} compiled and ran some tests
 {total_score_compiled/num_compiled} was the average score of the ones that compiled
 {num_hundred_percent} files achieved 100% on tests""")
+  
+  # compute single score
+
+  log_path = Path(score_path).parent / "logs"
+  total_scores = []
+  for result in results:
+    kotlin_file = (log_path / result["file"]).with_suffix(".kt")
+
+    num_lines = len([line for line in strip_kotlin_comments(kotlin_file.read_text()).splitlines() if line.strip() != ""])
+
+    score_for_file = (0 if result["tests_run"] == 0 else (result["tests_passed"] / result["tests_run"])) / num_lines
+
+    total_scores.append(score_for_file)
+  
+  version = Path(score_path).parent.name
+  
+  print(f"raw score for {version}: {sum(total_scores)}")
+  print(f"score for {version}: {sum(total_scores) / len(results)}")
+  print("==========" * 2)

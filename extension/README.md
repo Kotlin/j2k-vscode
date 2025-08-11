@@ -1,12 +1,12 @@
 # j2k-vscode
 
-An extension which provides one-click, review-before-you-commit Java to Kotlin migration inside VS Code
+An extension which provides one-click, review-before-you-commit Java to Kotlin migration inside VS Code.
 
 ## Features
 
 ### Convert to Kotlin
 
-Right click a `.java` file, or run J2K: Convert to Kotlin from the Command Palette.
+Right click a `.java` file, a selection of files or a folder to convert all selected `.java` files.
 
 ### Instant diff preview
 
@@ -20,6 +20,10 @@ Accept the changes to replace the Java file with its Kotlin replacement, or canc
 
 Commit the conversion as a rename and modification which keeps commit history intact. Currently supported version control software: Git
 
+### Build System integration
+
+Automatically configure Kotlin for your project. Currently supported build systems: Gradle
+
 ## Extension Settings
 
 This extension contributes the following settings:
@@ -28,6 +32,7 @@ This extension contributes the following settings:
 * `j2k.model`: The model tag to use with the selected provider.
 * `j2k.ollama.baseUrl`: The base URL of the target instance, when the provider selected is Ollama.
 * `j2k.openRouter.baseUrl`: The base URL of the target instance, when the provider selected is OpenRouter.
+* `j2k.apiKey`: The API key to use with the selected provider (stored in VS Code Secrets).
 
 # END OF UPDATED REGION
 

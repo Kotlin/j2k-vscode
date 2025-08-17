@@ -180,9 +180,10 @@ export async function activate(context: vscode.ExtensionContext) {
         const left = await vscode.workspace.openTextDocument(
           completedJob.job.javaUri,
         );
-        let right = await vscode.workspace.openTextDocument(
-          completedJob.resultUri,
-        );
+        let right = await vscode.workspace.openTextDocument({
+          language: "kotlin",
+          content: completedJob.kotlinText,
+        });
 
         if (right.languageId !== "kotlin") {
           right = await vscode.languages.setTextDocumentLanguage(
@@ -192,7 +193,7 @@ export async function activate(context: vscode.ExtensionContext) {
         }
 
         javaUri = completedJob.job.javaUri;
-        kotlinUri = completedJob.resultUri;
+        kotlinUri = right.uri;
 
         await vscode.commands.executeCommand(
           "vscode.diff",

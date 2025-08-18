@@ -6,6 +6,8 @@ from pygments import lex
 
 from pathlib import Path
 
+IMPORTS_PACKAGE_VALID = False
+
 def strip_kotlin_comments(source: str) -> str:
     tokens = lex(source, KotlinLexer())
     return "".join(tok_text
@@ -61,9 +63,18 @@ for score_path in glob.glob("v[0-9]*/scores.txt"):
   for result in results:
     kotlin_file = (log_path / result["file"]).with_suffix(".kt")
 
-    num_lines = len([line for line in strip_kotlin_comments(kotlin_file.read_text()).splitlines() if line.strip() != ""])
+    real_lines = [line for line in strip_kotlin_comments(kotlin_file.read_text()).splitlines() if line.strip() != ""]
 
-    score_for_file = (0 if result["tests_run"] == 0 else (result["tests_passed"] / result["tests_run"])) / num_lines
+    if not IMPORTS_PACKAGE_VALID:
+      real_lines = [line for line in real_lines if not line.lower().startswith("import ") and not line.lower().startswith("package ")]
+
+    num_lines = len(real_lines)
+    
+    if num_lines == 0:
+      # empty code means no code to evaluate, so shouldn't touch score
+      continue
+    else:
+      score_for_file = (0 if result["tests_run"] == 0 else (result["tests_passed"] / result["tests_run"])) / num_lines
 
     total_scores.append(score_for_file)
   

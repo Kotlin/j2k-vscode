@@ -20,7 +20,8 @@ async function makeModel(context: vscode.ExtensionContext) {
         baseUrl: cfg.get<string>("ollama.baseUrl", "http://localhost:11434"),
         model: model,
         temperature: 0,
-        numCtx: 8192 * 2
+        numCtx: 8192 * 2,
+        keepAlive: 0,
       });
     case "openrouter":
       return new ChatOpenAI({

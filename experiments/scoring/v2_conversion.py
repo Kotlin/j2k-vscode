@@ -1,4 +1,12 @@
 import requests
+import json
+
+config = None
+
+with open("config.json", "r") as f:
+  config = json.loads(f.read())
+
+MODEL = config["model"]
 
 TASK_CONTEXT = """You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist."""
 
@@ -479,7 +487,6 @@ def _get_last_kotlin_text(string):
 
 def convert(java_code):
   OLLAMA_URL = "http://localhost:11434/api/chat"
-  MODEL = "deepseek-r1:8b"
 
   messages = [
     {

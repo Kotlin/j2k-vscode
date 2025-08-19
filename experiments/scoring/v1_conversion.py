@@ -1,4 +1,12 @@
 import requests
+import json
+
+config = None
+
+with open("config.json", "r") as f:
+  config = json.loads(f.read())
+
+MODEL = config["model"]
 
 def _get_after_sentinel(kotlin_code: str):
   sentinel = "<<START_J2K>>"
@@ -11,7 +19,6 @@ def _get_after_sentinel(kotlin_code: str):
 
 def convert(java_code):
   OLLAMA_URL = "http://localhost:11434/api/chat"
-  MODEL = "deepseek-r1:8b"
 
   messages = [
     {

@@ -1,6 +1,14 @@
 import re
 from tree_sitter_languages import get_parser
 import requests
+import json
+
+config = None
+
+with open("config.json", "r") as f:
+  config = json.loads(f.read())
+
+MODEL = config["model"]
 
 PARSER = get_parser("java")
 TYPE_NODES = {"class_declaration","interface_declaration","enum_declaration","record_declaration"}
@@ -216,7 +224,6 @@ def _get_last_kotlin_text(string):
 
 def convert(java_code):
   OLLAMA_URL = "http://localhost:11434/api/chat"
-  MODEL = "deepseek-r1:8b"
 
   function_results = []
 

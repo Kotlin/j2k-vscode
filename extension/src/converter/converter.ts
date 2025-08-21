@@ -236,16 +236,16 @@ export function extractLastKotlinBlockFromMarkdown(text: string, general: boolea
 export function extractLastKotlinBlock(text: string) {
   const original = text;
 
-  const resultInXML = extractLastKotlinBlockFromXML(text);
-
-  if (resultInXML !== original) {
-    return resultInXML;
-  }
-
   const resultInMarkdown = extractLastKotlinBlockFromMarkdown(text);
 
   if (resultInMarkdown !== original) {
     return resultInMarkdown;
+  }
+
+  const resultInXML = extractLastKotlinBlockFromXML(text);
+
+  if (resultInXML !== original) {
+    return resultInXML;
   }
 
   const resultInGeneralMarkdown = extractLastKotlinBlockFromMarkdown(text, true);
@@ -294,7 +294,7 @@ async function convertStructurallyWithLLM(
   const functions = new Map<string, string>();
 
   for (const address of extractAddresses(javaCode)) {
-    await onToken(`====== CONVERSION START ${address} ======`);
+    await onToken(`====== CONVERSION START ${address} ======\n`);
     let functionConversionResult = "";
 
     const prompt = getFunctionPrompt(javaCode, address);
@@ -314,7 +314,7 @@ async function convertStructurallyWithLLM(
 
     const actualResultFunction = extractLastKotlinBlock(functionConversionResult);
     functions.set(address, actualResultFunction);
-    await onToken(`====== CONVERSION END ${address} ======`);
+    await onToken(`====== CONVERSION END ${address} ======\n`);
   }
 
   const prompt = getStructuralPrompt(javaCode, functions);

@@ -14,7 +14,8 @@ function getFunctionPrompt(javaCode: string, address: string) {
   const systemContent = [
     "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist. ",
     "Convert the given function to idiomatic Kotlin and output the final code in <kotlin> tags. ",
-    "Preserve behavior and API, prefer idiomatic Kotlin when safe."
+    "Preserve behavior and API, prefer idiomatic Kotlin when safe. ",
+    "You MUST provide the final output in <kotlin> tags, no markdown, nothing else apart from <kotlin> XML tags enclosing the output."
   ].join("");
 
   const TASK_DESCRIPTION = "Your task is to convert only a specific function within the provided Java code to **idiomatic kotlin**, preserving behaviour while improving readability, safety and maintainability.";
@@ -24,7 +25,7 @@ function getFunctionPrompt(javaCode: string, address: string) {
 ${javaCode}
 </java>`;
 
-  const FUNCTION_TARGET = `The function you should translate is: {function}
+  const FUNCTION_TARGET = `The function you should translate is: ${address}
 This refers to the exact method/constructor with the same name and parameter types.`;
 
   const OUTPUT_FORMATTING = "Wrap the conversion result of the function in <kotlin> tags. Return ONLY the Kotlin function wrapped in the tags. Do NOT move/rename the function or change parameters.";
@@ -53,7 +54,8 @@ function getStructuralPrompt(javaCode: string, functions: Map<string, string>) {
   const systemContent = [
     "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist. ",
     "Convert the given Java code to idiomatic Kotlin and output the final code in <kotlin> tags. ",
-    "Preserve behavior and API, prefer idiomatic Kotlin when safe."
+    "Preserve behavior and API, prefer idiomatic Kotlin when safe. ",
+    "You MUST provide the final output in <kotlin> tags, no markdown, nothing else apart from <kotlin> XML tags enclosing the output."
   ].join("");
 
   const TASK_DESCRIPTION = "Your task is to convert the following Java code to **idiomatic Kotlin**, preserving behaviour while improving readability, safety and maintainability. The functions have already been converted for you, so you can use these as the correct conversions of the functions within the Java code.";
@@ -236,16 +238,16 @@ export function extractLastKotlinBlockFromMarkdown(text: string, general: boolea
 export function extractLastKotlinBlock(text: string) {
   const original = text;
 
-  const resultInMarkdown = extractLastKotlinBlockFromMarkdown(text);
-
-  if (resultInMarkdown !== original) {
-    return resultInMarkdown;
-  }
-
   const resultInXML = extractLastKotlinBlockFromXML(text);
 
   if (resultInXML !== original) {
     return resultInXML;
+  }
+
+  const resultInMarkdown = extractLastKotlinBlockFromMarkdown(text);
+
+  if (resultInMarkdown !== original) {
+    return resultInMarkdown;
   }
 
   const resultInGeneralMarkdown = extractLastKotlinBlockFromMarkdown(text, true);
@@ -294,7 +296,7 @@ async function convertStructurallyWithLLM(
   const functions = new Map<string, string>();
 
   for (const address of extractAddresses(javaCode)) {
-    await onToken(`====== CONVERSION START ${address} ======\n`);
+    await onToken(`\n\n====== CONVERSION START ${address} ======\n\n`);
     let functionConversionResult = "";
 
     const prompt = getFunctionPrompt(javaCode, address);
@@ -314,7 +316,7 @@ async function convertStructurallyWithLLM(
 
     const actualResultFunction = extractLastKotlinBlock(functionConversionResult);
     functions.set(address, actualResultFunction);
-    await onToken(`====== CONVERSION END ${address} ======\n`);
+    await onToken(`\n\n====== CONVERSION END ${address} ======\n\n`);
   }
 
   const prompt = getStructuralPrompt(javaCode, functions);

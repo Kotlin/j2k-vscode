@@ -6,7 +6,11 @@ import { join } from "path";
 import { convertToKotlin, extractLastKotlinBlock } from "../../converter";
 
 function getCase(name: string) {
-  const path = join(__dirname, "../../../src/test/unit/converter-cases", `${name}.java`);
+  const path = join(
+    __dirname,
+    "../../../src/test/unit/converter-cases",
+    `${name}.java`,
+  );
   return readFileSync(path, "utf-8");
 }
 
@@ -52,7 +56,7 @@ suite("LLM testsuite", function () {
     assert.match(
       kotlin,
       /import\s+org\.springframework\.beans\.factory\.annotation\.Autowired/,
-      "Spring @Autowired import disappeared or was mangled"
+      "Spring @Autowired import disappeared or was mangled",
     );
   });
 
@@ -62,7 +66,7 @@ suite("LLM testsuite", function () {
     const kotlin = await runConversion(getCase("DataClasses"));
     assert.ok(
       !/\bdata\s+class\b/.test(kotlin),
-      "`data class` keyword should be absent"
+      "`data class` keyword should be absent",
     );
   });
 

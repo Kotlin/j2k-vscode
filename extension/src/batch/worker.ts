@@ -129,7 +129,9 @@ export class Worker {
 
   removeCompleted(result: vscode.Uri) {
     const i = this.completed.findIndex(
-      (c) => c.resultUri.fsPath === result.fsPath,
+      (c) =>
+        c.resultUri.fsPath === result.fsPath ||
+        c.job.javaUri.fsPath === result.fsPath,
     );
 
     if (i >= 0) {

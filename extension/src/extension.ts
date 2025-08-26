@@ -142,7 +142,7 @@ export async function activate(context: vscode.ExtensionContext) {
       const javaUris = await normaliseSelection(selected);
 
       javaUris.forEach((uri: vscode.Uri) => {
-        outputChannel.append(
+        outputChannel.appendLine(
           `queueFile: Enqueued ${path.basename(uri.fsPath)}`,
         );
 
@@ -247,7 +247,7 @@ export async function activate(context: vscode.ExtensionContext) {
         "workbench.action.revertAndCloseActiveEditor",
       );
 
-      worker.removeCompleted(kotlinUri);
+      worker.removeCompleted(javaUri);
     },
   );
 
@@ -258,6 +258,10 @@ export async function activate(context: vscode.ExtensionContext) {
       await vscode.commands.executeCommand(
         "workbench.action.revertAndCloseActiveEditor",
       );
+
+      if (javaUri) {
+        worker.removeCompleted(javaUri);
+      }
     },
   );
 

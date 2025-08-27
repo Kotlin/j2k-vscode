@@ -24,6 +24,10 @@ Commit the conversion as a rename and modification which keeps commit history in
 
 Automatically configure Kotlin for your project. Currently supported build systems: Gradle
 
+### Integration with many major model providers
+
+Use popular models seamlessly to power Kotlin conversion. Currently supported: OpenAI, OpenAI-like (OpenRouter, LM Studio), Ollama, VSCode-integrated Github Copilot
+
 ## Extension Settings
 
 This extension contributes the following settings:

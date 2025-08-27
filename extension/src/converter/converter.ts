@@ -159,7 +159,7 @@ async function makeModel(context: vscode.ExtensionContext) {
   const cfg = vscode.workspace.getConfiguration("j2k");
 
   const model = cfg.get<string>("model", "deepseek-r1:8b");
-  const provider = cfg.get<string>("provider", "local-ollama");
+  const provider = cfg.get<string>("provider", "copilot");
 
   const apiKey = (await context.secrets.get("j2k.apiKey")) ?? "";
 
@@ -447,7 +447,7 @@ export async function convertToKotlin(
   context: vscode.ExtensionContext,
   onToken: (token: string) => Promise<void>,
 ) {
-  const provider = vscode.workspace.getConfiguration("j2k").get<string>("provider", "local-ollama");
+  const provider = vscode.workspace.getConfiguration("j2k").get<string>("provider", "copilot");
 
   if (provider === "copilot") {
     return await convertStructurallyWithCopilot(javaCode, outputChannel, context, onToken);

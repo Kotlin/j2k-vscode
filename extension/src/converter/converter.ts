@@ -376,15 +376,27 @@ async function convertStructurallyWithCopilot(javaCode: string, outputChannel: v
       `convertStructurallyWithLLM: Prompt invoked for ${address}, waiting for response`,
     );
 
-    const response = await model.sendRequest(
-      messages.map(toVSCodeMessage),
-      {
-        justification: `J2K: convert function ${address}`,
-        modelOptions: {
-          temperature: 0,
+    let response;
+
+    try {
+      response = await model.sendRequest(
+        messages.map(toVSCodeMessage),
+        {
+          justification: `J2K: convert function ${address}`,
+          modelOptions: {
+            temperature: 0,
+          }
         }
+      );
+    } catch (err) {
+      if (err instanceof vscode.LanguageModelError) {
+        outputChannel.appendLine(`Copilot error: ${err.code} - ${err.message}`);
+        vscode.window.showErrorMessage(`Copilot request failed: ${err.code} - ${err.message}`);
+        return;
       }
-    );
+
+      throw err;
+    }
 
     for await (const chunk of response.text) {
       await onToken(chunk);
@@ -402,15 +414,27 @@ async function convertStructurallyWithCopilot(javaCode: string, outputChannel: v
 
   outputChannel.appendLine(`convertStructurallyWithCopilot: Converting full code now`);
 
-  const response = await model.sendRequest(
-    messages.map(toVSCodeMessage),
-    { 
-      justification: "J2K: full file conversion",
-      modelOptions: {
-        temperature: 0,
+  let response;
+
+  try {
+    response = await model.sendRequest(
+      messages.map(toVSCodeMessage),
+      { 
+        justification: "J2K: full file conversion",
+        modelOptions: {
+          temperature: 0,
+        }
       }
+    );
+  } catch (err) {
+    if (err instanceof vscode.LanguageModelError) {
+      outputChannel.appendLine(`Copilot error: ${err.code} - ${err.message}`);
+      vscode.window.showErrorMessage(`Copilot request failed: ${err.code} - ${err.message}`);
+      return;
     }
-  );
+
+    throw err;
+  }
 
   for await (const chunk of response.text) {
     await onToken(chunk);

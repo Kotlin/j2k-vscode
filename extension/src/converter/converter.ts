@@ -4,6 +4,7 @@ import { RunnableSequence } from "@langchain/core/runnables";
 
 import { getPrompt } from "./prompt";
 import { extractAddresses } from "./extract-addresses";
+import { BaseMessage } from "@langchain/core/messages";
 
 import * as vscode from "vscode";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
@@ -158,7 +159,7 @@ async function makeModel(context: vscode.ExtensionContext) {
   const cfg = vscode.workspace.getConfiguration("j2k");
 
   const model = cfg.get<string>("model", "deepseek-r1:8b");
-  const provider = cfg.get<string>("provider", "local-ollama");
+  const provider = cfg.get<string>("provider", "copilot");
 
   const apiKey = (await context.secrets.get("j2k.apiKey")) ?? "";
 
@@ -333,11 +334,123 @@ async function convertStructurallyWithLLM(
   }
 }
 
+function toVSCodeMessage(message: BaseMessage): vscode.LanguageModelChatMessage {
+  const role = message.getType().toLowerCase();
+  const content = message.content as string;
+
+  switch (role) {
+    case "system":
+    case "human":
+    case "user":
+      return vscode.LanguageModelChatMessage.User(content);
+    case "ai":
+    case "assistant":
+      return vscode.LanguageModelChatMessage.Assistant(content);
+    default:
+      return vscode.LanguageModelChatMessage.User(content);
+  }
+}
+
+async function convertStructurallyWithCopilot(javaCode: string, outputChannel: vscode.OutputChannel, context: vscode.ExtensionContext, onToken: (token: string) => Promise<void>) {
+  outputChannel.appendLine("convertStructurallyWithCopilot: Using GitHub Copilot");
+
+  const [model] = await vscode.lm.selectChatModels({ vendor: "copilot" });
+  if (!model) {
+    throw new Error("GitHub Copilot is not available/enabled.");
+  }
+
+  outputChannel.appendLine(`convertStructurallyWithCopilot: Using model ${model.id}`);
+
+  const functions = new Map<string, string>();
+
+  for (const address of extractAddresses(javaCode)) {
+    await onToken(`\n\n====== CONVERSION START ${address} ======\n\n`);
+    let functionConversionResult = "";
+
+    const prompt = getFunctionPrompt(javaCode, address);
+
+    // materialise messages to iterate over them
+    const messages = await prompt.formatMessages({});
+
+    outputChannel.appendLine(
+      `convertStructurallyWithLLM: Prompt invoked for ${address}, waiting for response`,
+    );
+
+    let response;
+
+    try {
+      response = await model.sendRequest(
+        messages.map(toVSCodeMessage),
+        {
+          justification: `J2K: convert function ${address}`,
+          modelOptions: {
+            temperature: 0,
+          }
+        }
+      );
+    } catch (err) {
+      if (err instanceof vscode.LanguageModelError) {
+        outputChannel.appendLine(`Copilot error: ${err.code} - ${err.message}`);
+        vscode.window.showErrorMessage(`Copilot request failed: ${err.code} - ${err.message}`);
+        return;
+      }
+
+      throw err;
+    }
+
+    for await (const chunk of response.text) {
+      await onToken(chunk);
+      functionConversionResult += chunk;
+    }
+
+    const actualResultFunction = extractLastKotlinBlock(functionConversionResult);
+    functions.set(address, actualResultFunction);
+
+    await onToken(`\n\n====== CONVERSION END ${address} ======\n\n`);
+  }
+
+  const prompt = getStructuralPrompt(javaCode, functions);
+  const messages = await prompt.formatMessages({});
+
+  outputChannel.appendLine(`convertStructurallyWithCopilot: Converting full code now`);
+
+  let response;
+
+  try {
+    response = await model.sendRequest(
+      messages.map(toVSCodeMessage),
+      { 
+        justification: "J2K: full file conversion",
+        modelOptions: {
+          temperature: 0,
+        }
+      }
+    );
+  } catch (err) {
+    if (err instanceof vscode.LanguageModelError) {
+      outputChannel.appendLine(`Copilot error: ${err.code} - ${err.message}`);
+      vscode.window.showErrorMessage(`Copilot request failed: ${err.code} - ${err.message}`);
+      return;
+    }
+
+    throw err;
+  }
+
+  for await (const chunk of response.text) {
+    await onToken(chunk);
+  }
+}
+
 export async function convertToKotlin(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
   context: vscode.ExtensionContext,
   onToken: (token: string) => Promise<void>,
 ) {
+  const provider = vscode.workspace.getConfiguration("j2k").get<string>("provider", "copilot");
+
+  if (provider === "copilot") {
+    return await convertStructurallyWithCopilot(javaCode, outputChannel, context, onToken);
+  }
   await convertStructurallyWithLLM(javaCode, outputChannel, context, onToken);
 }

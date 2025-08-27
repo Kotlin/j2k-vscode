@@ -138,9 +138,10 @@
           "enum": [
             "local-ollama",
             "openrouter",
-            "openai"
+            "openai",
+            "copilot"
           ],
-          "default": "local-ollama",
+          "default": "copilot",
           "description": "Which LLM backend to use for Java to Kotlin conversion."
         },
         "j2k.model": {

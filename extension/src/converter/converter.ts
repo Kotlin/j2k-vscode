@@ -441,6 +441,51 @@ async function convertStructurallyWithCopilot(javaCode: string, outputChannel: v
   }
 }
 
+async function convertUsingCopilot(
+  javaCode: string,
+  outputChannel: vscode.OutputChannel,
+  context: vscode.ExtensionContext,
+  onToken: (token: string) => Promise<void>,
+) {
+  outputChannel.appendLine("convertUsingCopilot: Using GitHub Copilot (basic)");
+
+  const [model] = await vscode.lm.selectChatModels({ vendor: "copilot" });
+  if (!model) {
+    throw new Error("GitHub Copilot is not available/enabled.");
+  }
+
+  outputChannel.appendLine(`convertUsingCopilot: Using model ${model.id}`);
+
+  const prompt = getPrompt(javaCode);
+  const messages = await prompt.formatMessages({});
+
+  outputChannel.appendLine("convertUsingCopilot: Prompt invoked, waiting for response");
+  outputChannel.appendLine("convertUsingCopilot: Starting Copilot stream");
+
+  let response;
+  try {
+    response = await model.sendRequest(
+      messages.map(toVSCodeMessage),
+      {
+        justification: "J2K: full file conversion",
+        modelOptions: { temperature: 0 },
+      }
+    );
+  } catch (err) {
+    if (err instanceof vscode.LanguageModelError) {
+      outputChannel.appendLine(`Copilot error: ${err.code} - ${err.message}`);
+      vscode.window.showErrorMessage(`Copilot request failed: ${err.code} - ${err.message}`);
+      return;
+    }
+
+    throw err;
+  }
+
+  for await (const chunk of response.text) {
+    await onToken(chunk);
+  }
+}
+
 export async function convertToKotlin(
   javaCode: string,
   outputChannel: vscode.OutputChannel,
@@ -450,7 +495,7 @@ export async function convertToKotlin(
   const provider = vscode.workspace.getConfiguration("j2k").get<string>("provider", "copilot");
 
   if (provider === "copilot") {
-    return await convertStructurallyWithCopilot(javaCode, outputChannel, context, onToken);
+    return await convertUsingCopilot(javaCode, outputChannel, context, onToken);
   }
   await convertStructurallyWithLLM(javaCode, outputChannel, context, onToken);
 }

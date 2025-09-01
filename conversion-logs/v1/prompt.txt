@@ -1,4 +1,0 @@
-Translate the given Java code to Kotlin.
-Return only the translated Kotlin code, no extra comments.
-Return the code text after the following sentinel token, written exactly as <<START_J2K>>.
-After <<START_J2K>>, output *only valid Kotlin source code*; do not add any labels or explanations.

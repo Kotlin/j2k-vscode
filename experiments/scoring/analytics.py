@@ -35,7 +35,7 @@ def parse_test_results(report_text):
   return results
 
 print("==========" * 2)
-for score_path in glob.glob("v[0-9]*/scores.txt"):
+for score_path in sorted(glob.glob("v[0-9]*/scores.txt")):
   results = parse_test_results(open(score_path, "r").read())
   num_cases = len(results)
   # how many compiled
@@ -60,6 +60,7 @@ for score_path in glob.glob("v[0-9]*/scores.txt"):
 
   log_path = Path(score_path).parent / "logs"
   total_scores = []
+  total_lines = 0
   for result in results:
     kotlin_file = (log_path / result["file"]).with_suffix(".kt")
 
@@ -74,12 +75,13 @@ for score_path in glob.glob("v[0-9]*/scores.txt"):
       # empty code means no code to evaluate, so shouldn't touch score
       continue
     else:
-      score_for_file = (0 if result["tests_run"] == 0 else (result["tests_passed"] / result["tests_run"])) / num_lines
+      total_lines += num_lines
+      score_for_file = (0 if result["tests_run"] == 0 else (result["tests_passed"] / result["tests_run"])) * num_lines
 
     total_scores.append(score_for_file)
   
   version = Path(score_path).parent.name
   
   print(f"raw score for {version}: {sum(total_scores)}")
-  print(f"score for {version}: {sum(total_scores) / len(results)}")
+  print(f"score for {version}: {sum(total_scores) / total_lines}")
   print("==========" * 2)

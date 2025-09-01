@@ -28,9 +28,11 @@ Download the latest `.vsix` from the releases section of this repository. Then, 
 
 ### Reporting an issue
 
-To report a bug or an issue, please use GitHub issues and log an issue under this repository. 
+To report a bug or an issue, please use GitHub issues and log an issue under this repository. When reporting, include as much detail as possible (steps to reproduce, expected vs. actual behaviour, screenshots, etc.).
 
 ### Contributing
+
+Contributions are welcome! If you'd like to improve the project, please fork the repository and create a pull request with your changes. Make sure your code is formatted and linted (`npm` targets exist for these actions) and includes relevant documentation updates. For larger contributions, consider opening an issue first.
 
 ## Features
 
@@ -63,16 +65,10 @@ Use popular models seamlessly to power Kotlin conversion. Currently supported: O
 This extension contributes the following settings:
 
 * `j2k.provider`: The LLM backend to use for the Java to Kotlin conversion. Default: `GitHub Copilot`
-* `j2k.model`: The model tag to use with the selected provider. Default: `codellama: instruct`.
+* `j2k.model`: The model tag to use with the selected provider. Default: `codellama:instruct`.
 * `j2k.ollama.baseUrl`: The base URL of the target instance, when the provider selected is Ollama.
 * `j2k.openRouter.baseUrl`: The base URL of the target instance, when the provider selected is OpenRouter.
 * `j2k.apiKey`: The API key to use with the selected provider (stored in VS Code Secrets).
-
-# END OF UPDATED REGION
-
-## Known Issues
-
-Calling out known issues can help limit users opening duplicate issues against your extension.
 
 ## Release Notes
 

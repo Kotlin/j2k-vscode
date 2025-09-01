@@ -22,6 +22,8 @@ One of the following LM providers should be configured:
 
 Download the latest `.vsix` from the releases section of this repository. Then, navigate to the Extensions tab in VS Code, click the three small dots on the top right corner of the tab, and choose `Install from VSIX...`. Then, select the newly downloaded J2K VSIX to finish the installation.
 
+<img width="505" height="306" alt="image" src="https://github.com/user-attachments/assets/9315bf87-c3c4-4585-a9b2-a43412b54928" />
+
 ## Feedback
 
 ### Reporting an issue

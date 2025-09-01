@@ -28,6 +28,14 @@ Automatically configure Kotlin for your project. Currently supported build syste
 
 Use popular models seamlessly to power Kotlin conversion. Currently supported: OpenAI, OpenAI-like (OpenRouter, LM Studio), Ollama, VSCode-integrated Github Copilot
 
+## Quick Start
+
+1. Choose a provider in J2K settings (Provider: `j2k.provider`)
+2. Set credentials (if required): `j2k.setApiKey`, or click the link under the extension settings
+3. Convert: open a Java project, right click a `.java` file/folder, choose Convert to Kotlin
+4. Review the diff (edit the Kotlin pane to your liking)
+5. Accept (Ctrl+Enter) or Cancel (Esc)
+
 ## Extension Settings
 
 This extension contributes the following settings:

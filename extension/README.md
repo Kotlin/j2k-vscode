@@ -12,7 +12,15 @@ In the demo, a new project is opened, Kotlin is configured automatically, and co
 
 ### Prerequisites
 
+One of the following LM providers should be configured:
+
+* GitHub Copilot Chat installed in VS Code and signed in.
+* Ollama/LM Studio running locally and the chosen model pulled.
+* A valid API key for OpenAI/OpenRouter.
+
 ### How to install
+
+Download the latest `.vsix` from the releases section of this repository. Then, navigate to the Extensions tab in VS Code, click the three small dots on the top right corner of the tab, and choose `Install from VSIX...`. Then, select the newly downloaded J2K VSIX to finish the installation.
 
 ## Feedback
 
@@ -20,7 +28,7 @@ In the demo, a new project is opened, Kotlin is configured automatically, and co
 
 To report a bug or an issue, please use GitHub issues and log an issue under this repository. 
 
-## Contributing
+### Contributing
 
 ## Features
 

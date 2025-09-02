@@ -212,12 +212,15 @@ export async function activate(context: vscode.ExtensionContext) {
       assert.ok(javaUri, "javaUri is not set before accepting conversion");
       assert.ok(kotlinUri, "kotlinUri is not set before accepting conversion");
 
-      const kotlinDoc = await vscode.workspace.openTextDocument(kotlinUri);
+      const currentJavaUri = javaUri;
+      const currentKotlinUri = kotlinUri;
+
+      const kotlinDoc = await vscode.workspace.openTextDocument(currentKotlinUri);
       const replacementCode = kotlinDoc.getText();
 
       // write the replacement code to the same location as the java
 
-      const oldPath = javaUri.fsPath;
+      const oldPath = currentJavaUri.fsPath;
       const dir = path.dirname(oldPath);
       const base = path.basename(oldPath, ".java");
       const newPath = path.join(dir, base + ".kt");
@@ -227,7 +230,7 @@ export async function activate(context: vscode.ExtensionContext) {
       // rename the java file to .kt file extension to preserve commit
       // history, then commit
 
-      await vcsHandler.renameAndCommit(javaUri, kotlinReplacement);
+      await vcsHandler.renameAndCommit(currentJavaUri, kotlinReplacement);
 
       // write the kotlin file, then delete the old java file
       await vscode.workspace.fs.writeFile(
@@ -236,7 +239,7 @@ export async function activate(context: vscode.ExtensionContext) {
       );
 
       // log the changes made to the file
-      const originalBase = path.basename(javaUri.fsPath, ".java");
+      const originalBase = path.basename(currentJavaUri.fsPath, ".java");
       const logFileName = `${originalBase}_polished.kt`;
       logFile(logFileName, replacementCode);
 
@@ -247,20 +250,22 @@ export async function activate(context: vscode.ExtensionContext) {
         "workbench.action.revertAndCloseActiveEditor",
       );
 
-      worker.removeCompleted(javaUri);
+      worker.removeCompleted(currentJavaUri);
     },
   );
 
   const cancelAndDiscard = vscode.commands.registerCommand(
     "j2k.cancelConversion",
     async () => {
+      const currentJavaUri = javaUri;
+
       // tidy up any changed state
       await vscode.commands.executeCommand(
         "workbench.action.revertAndCloseActiveEditor",
       );
 
-      if (javaUri) {
-        worker.removeCompleted(javaUri);
+      if (currentJavaUri) {
+        worker.removeCompleted(currentJavaUri);
       }
     },
   );

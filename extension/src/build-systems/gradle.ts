@@ -79,6 +79,9 @@ export class GradleBuildSystem implements JVMBuildSystem {
     const stdlib = isKts
       ? `implementation(kotlin("stdlib"))`
       : `implementation "org.jetbrains.kotlin:kotlin-stdlib"`;
+    const reflect = isKts
+      ? `implementation(kotlin("reflect"))`
+      : `implementation "org.jetbrains.kotlin:kotlin-reflect"`;
 
     const doc = await vscode.workspace.openTextDocument(uri);
     const text = doc.getText();
@@ -104,18 +107,35 @@ export class GradleBuildSystem implements JVMBuildSystem {
       }
     }
 
+    const dependenciesBlock = /dependencies\s*\{[\s\S]*?}/;
     const dependenciesSeen =
       /kotlin-stdlib|kotlin\(\s*["']stdlib["']\s*\)/.test(updated);
     if (!dependenciesSeen) {
       // no dependency found
 
-      const dependenciesBlock = /dependencies\s*\{[\s\S]*?}/;
       if (dependenciesBlock.test(updated)) {
         updated = updated.replace(dependenciesBlock, (m) =>
           m.replace("{", `{\n${indent}${stdlib}`),
         );
       } else {
         updated += `\n\ndependencies {\n${indent}${stdlib}\n}\n`;
+      }
+    }
+
+    const springDetected = 
+      /\borg\.springframework\.boot\b/.test(updated);
+
+    if (springDetected) {
+      const reflectSeen =
+        /kotlin-reflect|kotlin\(\s*["']reflect["']\s*\)/.test(updated);
+      if (!reflectSeen) {
+        if (dependenciesBlock.test(updated)) {
+          updated = updated.replace(dependenciesBlock, (m) => 
+            m.replace("{", `{\n${indent}${reflect}`),
+          );
+        } else {
+          updated += `\n\ndependencies {\n${indent}${reflect}\n}\n`;
+        }
       }
     }
 

@@ -9,17 +9,19 @@ import { BaseMessage } from "@langchain/core/messages";
 import * as vscode from "vscode";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 
-const TASK_CONTEXT = "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist.";
+const TASK_CONTEXT =
+  "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist.";
 
 function getFunctionPrompt(javaCode: string, address: string) {
   const systemContent = [
     "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist. ",
     "Convert the given function to idiomatic Kotlin and output the final code in <kotlin> tags. ",
     "Preserve behavior and API, prefer idiomatic Kotlin when safe. ",
-    "You MUST provide the final output in <kotlin> tags, no markdown, nothing else apart from <kotlin> XML tags enclosing the output."
+    "You MUST provide the final output in <kotlin> tags, no markdown, nothing else apart from <kotlin> XML tags enclosing the output.",
   ].join("");
 
-  const TASK_DESCRIPTION = "Your task is to convert only a specific function within the provided Java code to **idiomatic kotlin**, preserving behaviour while improving readability, safety and maintainability.";
+  const TASK_DESCRIPTION =
+    "Your task is to convert only a specific function within the provided Java code to **idiomatic kotlin**, preserving behaviour while improving readability, safety and maintainability.";
 
   const INPUT_CONTEXT = `The function is part of the Java code given below:
 <java>
@@ -29,9 +31,11 @@ ${javaCode}
   const FUNCTION_TARGET = `The function you should translate is: ${address}
 This refers to the exact method/constructor with the same name and parameter types.`;
 
-  const OUTPUT_FORMATTING = "Wrap the conversion result of the function in <kotlin> tags. Return ONLY the Kotlin function wrapped in the tags. Do NOT move/rename the function or change parameters.";
-  
-  const REMARKS = "Output the conversion result as idiomatic Kotlin that drops into an otherwise fully and perfectly converted Kotlin codebase, where this function is the only gap. Convert only that one function/constructor. Use Kotlin idioms and avoid Java-isms.";
+  const OUTPUT_FORMATTING =
+    "Wrap the conversion result of the function in <kotlin> tags. Return ONLY the Kotlin function wrapped in the tags. Do NOT move/rename the function or change parameters.";
+
+  const REMARKS =
+    "Output the conversion result as idiomatic Kotlin that drops into an otherwise fully and perfectly converted Kotlin codebase, where this function is the only gap. Convert only that one function/constructor. Use Kotlin idioms and avoid Java-isms.";
 
   const humanContent = [
     TASK_CONTEXT,
@@ -39,16 +43,19 @@ This refers to the exact method/constructor with the same name and parameter typ
     INPUT_CONTEXT,
     FUNCTION_TARGET,
     OUTPUT_FORMATTING,
-    REMARKS
+    REMARKS,
   ].join("\n\n");
 
-  return ChatPromptTemplate.fromMessages([
-    { role: "system", content: systemContent },
-    { role: "human", content: humanContent}
-  ], {
-    templateFormat: "mustache",
-    validateTemplate: false
-  });
+  return ChatPromptTemplate.fromMessages(
+    [
+      { role: "system", content: systemContent },
+      { role: "human", content: humanContent },
+    ],
+    {
+      templateFormat: "mustache",
+      validateTemplate: false,
+    },
+  );
 }
 
 function getStructuralPrompt(javaCode: string, functions: Map<string, string>) {
@@ -56,23 +63,28 @@ function getStructuralPrompt(javaCode: string, functions: Map<string, string>) {
     "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist. ",
     "Convert the given Java code to idiomatic Kotlin and output the final code in <kotlin> tags. ",
     "Preserve behavior and API, prefer idiomatic Kotlin when safe. ",
-    "You MUST provide the final output in <kotlin> tags, no markdown, nothing else apart from <kotlin> XML tags enclosing the output."
+    "You MUST provide the final output in <kotlin> tags, no markdown, nothing else apart from <kotlin> XML tags enclosing the output.",
   ].join("");
 
-  const TASK_DESCRIPTION = "Your task is to convert the following Java code to **idiomatic Kotlin**, preserving behaviour while improving readability, safety and maintainability. The functions have already been converted for you, so you can use these as the correct conversions of the functions within the Java code.";
+  const TASK_DESCRIPTION =
+    "Your task is to convert the following Java code to **idiomatic Kotlin**, preserving behaviour while improving readability, safety and maintainability. The functions have already been converted for you, so you can use these as the correct conversions of the functions within the Java code.";
 
   const INPUT_CONTEXT = `The Java code to convert is:
 <java>
 ${javaCode}
 </java>`;
 
-  const FUNCTIONS_CONTEXT = "The Kotlin conversions for each function are listed below:";
+  const FUNCTIONS_CONTEXT =
+    "The Kotlin conversions for each function are listed below:";
 
   const FUNCTION_CONVERSIONS = Array.from(functions.entries())
-    .map(([name, body]) => `Function: ${name}
+    .map(
+      ([name, body]) => `Function: ${name}
 <kotlin>
 ${body}
-</kotlin>`).join("\n");
+</kotlin>`,
+    )
+    .join("\n");
 
   const PRECOGNITION = `Before emitting any code, run through the provided Java input and perform these 3 steps of thinking.
 <step>
@@ -131,8 +143,9 @@ ${body}
 After each stage, after the updated conversion code has been emitted, go through each of these invariants, listing the ones that no longer hold after this step. If any exist, revert to the previous step and recalculate the current step from the top.`;
 
   const OUTPUT_FORMATTING = "Wrap the conversion result in <kotlin> tags.";
-  
-  const REMARKS = "Use the pre-converted functions given above to help convert the entire Java source to idiomatic Kotlin.";
+
+  const REMARKS =
+    "Use the pre-converted functions given above to help convert the entire Java source to idiomatic Kotlin.";
 
   const humanContent = [
     TASK_CONTEXT,
@@ -143,16 +156,19 @@ After each stage, after the updated conversion code has been emitted, go through
     PRECOGNITION,
     INVARIANTS,
     OUTPUT_FORMATTING,
-    REMARKS
+    REMARKS,
   ].join("\n\n");
 
-  return ChatPromptTemplate.fromMessages([
-    { role: "system", content: systemContent },
-    { role: "human", content: humanContent}
-  ], {
-    templateFormat: "mustache",
-    validateTemplate: false
-  });
+  return ChatPromptTemplate.fromMessages(
+    [
+      { role: "system", content: systemContent },
+      { role: "human", content: humanContent },
+    ],
+    {
+      templateFormat: "mustache",
+      validateTemplate: false,
+    },
+  );
 }
 
 async function makeModel(context: vscode.ExtensionContext) {
@@ -213,7 +229,10 @@ export function extractLastKotlinBlockFromXML(text: string) {
   return text.slice(start, closeIdx);
 }
 
-export function extractLastKotlinBlockFromMarkdown(text: string, general: boolean = false) {
+export function extractLastKotlinBlockFromMarkdown(
+  text: string,
+  general: boolean = false,
+) {
   let OPEN = "```";
   if (general) {
     OPEN += "kotlin";
@@ -251,7 +270,10 @@ export function extractLastKotlinBlock(text: string) {
     return resultInMarkdown;
   }
 
-  const resultInGeneralMarkdown = extractLastKotlinBlockFromMarkdown(text, true);
+  const resultInGeneralMarkdown = extractLastKotlinBlockFromMarkdown(
+    text,
+    true,
+  );
 
   return resultInGeneralMarkdown;
 }
@@ -290,7 +312,9 @@ async function convertStructurallyWithLLM(
   onToken: (token: string) => Promise<void>,
 ) {
   const model = await makeModel(context);
-  outputChannel.appendLine(`convertStructurallyWithLLM: Using model ${model.model}`);
+  outputChannel.appendLine(
+    `convertStructurallyWithLLM: Using model ${model.model}`,
+  );
 
   outputChannel.appendLine("convertStructurallyWithLLM: Starting LLM stream");
 
@@ -315,7 +339,9 @@ async function convertStructurallyWithLLM(
       functionConversionResult += delta;
     }
 
-    const actualResultFunction = extractLastKotlinBlock(functionConversionResult);
+    const actualResultFunction = extractLastKotlinBlock(
+      functionConversionResult,
+    );
     functions.set(address, actualResultFunction);
     await onToken(`\n\n====== CONVERSION END ${address} ======\n\n`);
   }
@@ -323,7 +349,9 @@ async function convertStructurallyWithLLM(
   const prompt = getStructuralPrompt(javaCode, functions);
   const chain = RunnableSequence.from([prompt, model]);
 
-  outputChannel.appendLine(`convertStructurallyWithLLM: Converting full code now`);
+  outputChannel.appendLine(
+    `convertStructurallyWithLLM: Converting full code now`,
+  );
 
   for await (const chunk of await chain.stream({ javaCode })) {
     const delta: string =
@@ -334,7 +362,9 @@ async function convertStructurallyWithLLM(
   }
 }
 
-function toVSCodeMessage(message: BaseMessage): vscode.LanguageModelChatMessage {
+function toVSCodeMessage(
+  message: BaseMessage,
+): vscode.LanguageModelChatMessage {
   const role = message.getType().toLowerCase();
   const content = message.content as string;
 
@@ -351,15 +381,24 @@ function toVSCodeMessage(message: BaseMessage): vscode.LanguageModelChatMessage 
   }
 }
 
-async function convertStructurallyWithCopilot(javaCode: string, outputChannel: vscode.OutputChannel, context: vscode.ExtensionContext, onToken: (token: string) => Promise<void>) {
-  outputChannel.appendLine("convertStructurallyWithCopilot: Using GitHub Copilot");
+async function convertStructurallyWithCopilot(
+  javaCode: string,
+  outputChannel: vscode.OutputChannel,
+  context: vscode.ExtensionContext,
+  onToken: (token: string) => Promise<void>,
+) {
+  outputChannel.appendLine(
+    "convertStructurallyWithCopilot: Using GitHub Copilot",
+  );
 
   const [model] = await vscode.lm.selectChatModels({ vendor: "copilot" });
   if (!model) {
     throw new Error("GitHub Copilot is not available/enabled.");
   }
 
-  outputChannel.appendLine(`convertStructurallyWithCopilot: Using model ${model.id}`);
+  outputChannel.appendLine(
+    `convertStructurallyWithCopilot: Using model ${model.id}`,
+  );
 
   const functions = new Map<string, string>();
 
@@ -379,19 +418,18 @@ async function convertStructurallyWithCopilot(javaCode: string, outputChannel: v
     let response;
 
     try {
-      response = await model.sendRequest(
-        messages.map(toVSCodeMessage),
-        {
-          justification: `J2K: convert function ${address}`,
-          modelOptions: {
-            temperature: 0,
-          }
-        }
-      );
+      response = await model.sendRequest(messages.map(toVSCodeMessage), {
+        justification: `J2K: convert function ${address}`,
+        modelOptions: {
+          temperature: 0,
+        },
+      });
     } catch (err) {
       if (err instanceof vscode.LanguageModelError) {
         outputChannel.appendLine(`Copilot error: ${err.code} - ${err.message}`);
-        vscode.window.showErrorMessage(`Copilot request failed: ${err.code} - ${err.message}`);
+        vscode.window.showErrorMessage(
+          `Copilot request failed: ${err.code} - ${err.message}`,
+        );
         return;
       }
 
@@ -403,7 +441,9 @@ async function convertStructurallyWithCopilot(javaCode: string, outputChannel: v
       functionConversionResult += chunk;
     }
 
-    const actualResultFunction = extractLastKotlinBlock(functionConversionResult);
+    const actualResultFunction = extractLastKotlinBlock(
+      functionConversionResult,
+    );
     functions.set(address, actualResultFunction);
 
     await onToken(`\n\n====== CONVERSION END ${address} ======\n\n`);
@@ -412,24 +452,25 @@ async function convertStructurallyWithCopilot(javaCode: string, outputChannel: v
   const prompt = getStructuralPrompt(javaCode, functions);
   const messages = await prompt.formatMessages({});
 
-  outputChannel.appendLine(`convertStructurallyWithCopilot: Converting full code now`);
+  outputChannel.appendLine(
+    `convertStructurallyWithCopilot: Converting full code now`,
+  );
 
   let response;
 
   try {
-    response = await model.sendRequest(
-      messages.map(toVSCodeMessage),
-      { 
-        justification: "J2K: full file conversion",
-        modelOptions: {
-          temperature: 0,
-        }
-      }
-    );
+    response = await model.sendRequest(messages.map(toVSCodeMessage), {
+      justification: "J2K: full file conversion",
+      modelOptions: {
+        temperature: 0,
+      },
+    });
   } catch (err) {
     if (err instanceof vscode.LanguageModelError) {
       outputChannel.appendLine(`Copilot error: ${err.code} - ${err.message}`);
-      vscode.window.showErrorMessage(`Copilot request failed: ${err.code} - ${err.message}`);
+      vscode.window.showErrorMessage(
+        `Copilot request failed: ${err.code} - ${err.message}`,
+      );
       return;
     }
 
@@ -459,22 +500,23 @@ async function convertUsingCopilot(
   const prompt = getPrompt(javaCode);
   const messages = await prompt.formatMessages({});
 
-  outputChannel.appendLine("convertUsingCopilot: Prompt invoked, waiting for response");
+  outputChannel.appendLine(
+    "convertUsingCopilot: Prompt invoked, waiting for response",
+  );
   outputChannel.appendLine("convertUsingCopilot: Starting Copilot stream");
 
   let response;
   try {
-    response = await model.sendRequest(
-      messages.map(toVSCodeMessage),
-      {
-        justification: "J2K: full file conversion",
-        modelOptions: { temperature: 0 },
-      }
-    );
+    response = await model.sendRequest(messages.map(toVSCodeMessage), {
+      justification: "J2K: full file conversion",
+      modelOptions: { temperature: 0 },
+    });
   } catch (err) {
     if (err instanceof vscode.LanguageModelError) {
       outputChannel.appendLine(`Copilot error: ${err.code} - ${err.message}`);
-      vscode.window.showErrorMessage(`Copilot request failed: ${err.code} - ${err.message}`);
+      vscode.window.showErrorMessage(
+        `Copilot request failed: ${err.code} - ${err.message}`,
+      );
       return;
     }
 
@@ -492,7 +534,9 @@ export async function convertToKotlin(
   context: vscode.ExtensionContext,
   onToken: (token: string) => Promise<void>,
 ) {
-  const provider = vscode.workspace.getConfiguration("j2k").get<string>("provider", "copilot");
+  const provider = vscode.workspace
+    .getConfiguration("j2k")
+    .get<string>("provider", "copilot");
 
   if (provider === "copilot") {
     return await convertUsingCopilot(javaCode, outputChannel, context, onToken);

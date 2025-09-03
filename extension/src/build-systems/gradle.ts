@@ -122,15 +122,15 @@ export class GradleBuildSystem implements JVMBuildSystem {
       }
     }
 
-    const springDetected = 
-      /\borg\.springframework\.boot\b/.test(updated);
+    const springDetected = /\borg\.springframework\.boot\b/.test(updated);
 
     if (springDetected) {
-      const reflectSeen =
-        /kotlin-reflect|kotlin\(\s*["']reflect["']\s*\)/.test(updated);
+      const reflectSeen = /kotlin-reflect|kotlin\(\s*["']reflect["']\s*\)/.test(
+        updated,
+      );
       if (!reflectSeen) {
         if (dependenciesBlock.test(updated)) {
-          updated = updated.replace(dependenciesBlock, (m) => 
+          updated = updated.replace(dependenciesBlock, (m) =>
             m.replace("{", `{\n${indent}${reflect}`),
           );
         } else {

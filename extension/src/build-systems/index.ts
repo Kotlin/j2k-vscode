@@ -21,15 +21,21 @@ async function hasFile(folder: vscode.WorkspaceFolder, glob: string) {
   return files.length > 0;
 }
 
-export async function detectBuildSystem(): Promise<JVMBuildSystem> {
+export async function detectBuildSystems(): Promise<JVMBuildSystem[]> {
   const folders = vscode.workspace.workspaceFolders ?? [];
+  const buildSystems = [];
   for (const folder of folders) {
     if (await hasFile(folder, "**/{build.gradle,build.gradle.kts}")) {
-      return new GradleBuildSystem(folder);
-    } else if (await hasFile(folder, "**/pom.xml")) {
-      return new MavenBuildSystem(folder);
+      buildSystems.push(new GradleBuildSystem(folder));
+    } 
+    if (await hasFile(folder, "**/pom.xml")) {
+      buildSystems.push(new MavenBuildSystem(folder));
     }
   }
 
-  return new NoBuildSystem();
+  if (buildSystems.length > 0) {
+    return buildSystems;
+  }
+
+  return [new NoBuildSystem()];
 }

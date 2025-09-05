@@ -27,7 +27,7 @@ export async function detectBuildSystems(): Promise<JVMBuildSystem[]> {
   for (const folder of folders) {
     if (await hasFile(folder, "**/{build.gradle,build.gradle.kts}")) {
       buildSystems.push(new GradleBuildSystem(folder));
-    } 
+    }
     if (await hasFile(folder, "**/pom.xml")) {
       buildSystems.push(new MavenBuildSystem(folder));
     }

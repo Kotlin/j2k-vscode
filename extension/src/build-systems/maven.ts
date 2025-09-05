@@ -1,13 +1,11 @@
 import * as vscode from "vscode";
 import { JVMBuildSystem } from ".";
-import * as xml2js from "xml2js";
 
 const KOTLIN_VERSION = "2.2.0";
 const configureInPlaceReplacements = true;
 
 export class MavenBuildSystem implements JVMBuildSystem {
-  name: string = "Maven";
-
+  name = "Maven";
   workspaceFolder: vscode.WorkspaceFolder;
 
   constructor(folder: vscode.WorkspaceFolder) {
@@ -23,344 +21,370 @@ export class MavenBuildSystem implements JVMBuildSystem {
     return file;
   }
 
-  private detectSpring(pom: any): boolean {
-    const deps = pom?.project?.dependencies?.[0]?.dependency ?? [];
-    return deps.some((d: any) => {
-      const gid = (d.groupId?.[0] ?? "").toString();
-      return gid === "org.springframework.boot";
-    });
+  private stripXmlComments(xml: string) {
+    return xml.replace(/<!--([\s\S]*?)-->/g, "");
   }
 
-  private readCompilerTarget(pom: any): string | undefined {
-    const props = pom?.project?.properties?.[0] ?? {};
-    const release = props["maven.compiler.release"]?.[0];
-    const target = props["maven.compiler.target"]?.[0];
-    const source = props["maven.compiler.source"]?.[0];
-    return (release ?? target ?? source)?.toString();
+  private detectIndentUnit(text: string) {
+    for (const line of text.split(/\r?\n/)) {
+      const m = line.match(/^([ \t]+)\S/);
+      if (m) {
+        return m[1].includes("\t") ? "\t" : " ".repeat(m[1].length);
+      }
+    }
+    return "  ";
+  }
+
+  private hasKotlinPlugin(text: string) {
+    return /<artifactId>\s*kotlin-maven-plugin\s*<\/artifactId>/i.test(text);
+  }
+
+  private hasKotlinStdlib(text: string) {
+    return /<groupId>\s*org\.jetbrains\.kotlin\s*<\/groupId>\s*<artifactId>\s*kotlin-stdlib\s*<\/artifactId>/i.test(
+      this.stripXmlComments(text),
+    );
+  }
+
+  private hasKotlinReflect(text: string) {
+    return /<groupId>\s*org\.jetbrains\.kotlin\s*<\/groupId>\s*<artifactId>\s*kotlin-reflect\s*<\/artifactId>/i.test(
+      this.stripXmlComments(text),
+    );
+  }
+
+  private detectSpringBoot(text: string) {
+    // detect any dependency belonging to org.springframework.boot
+    return /<groupId>\s*org\.springframework\.boot\s*<\/groupId>/i.test(
+      this.stripXmlComments(text),
+    );
+  }
+
+  private readCompilerTarget(text: string): string | undefined {
+    const cleaned = this.stripXmlComments(text);
+    const getProp = (name: string) => {
+      const re = new RegExp(`<${name}>\\s*([^<\\s][^<]*)\\s*<\\/${name}>`, "i");
+      const m = cleaned.match(re);
+      return m?.[1];
+    };
+    return (
+      getProp("maven.compiler.release") ??
+      getProp("maven.compiler.target") ??
+      getProp("maven.compiler.source") ??
+      getProp("java.version")
+    );
   }
 
   async needsKotlin() {
     const uri = await this.getBuildFile();
-    if (!uri) return false;
-
+    if (!uri) {
+      return false;
+    }
     const contents = (await vscode.workspace.openTextDocument(uri)).getText();
-    return !contents.includes("kotlin-maven-plugin");
+    return !this.hasKotlinPlugin(contents);
   }
 
   async enableKotlin() {
     const uri = await this.getBuildFile();
-    if (!uri) throw new Error("No pom.xml found in this workspace folder.");
+    if (!uri) {
+      throw new Error("No pom.xml found in this workspace folder.");
+    }
 
     const doc = await vscode.workspace.openTextDocument(uri);
-    const text = doc.getText();
-    const parser = new xml2js.Parser({
-      preserveChildrenOrder: true,
-      charsAsChildren: true,
-      includeWhiteChars: true,
-    });
-    const builder = new xml2js.Builder({
-      renderOpts: { pretty: true, indent: "  " },
-    });
+    const original = doc.getText();
+    const indent = this.detectIndentUnit(original);
 
-    const pom = await parser.parseStringPromise(text);
-    pom.project = pom.project ?? {};
-    pom.project.properties = pom.project.properties ?? [{}];
-    pom.project.dependencies = pom.project.dependencies ?? [{}];
-    pom.project.build = pom.project.build ?? [{}];
+    let updated = original;
 
-    const props = pom.project.properties[0];
-    const depsNode = pom.project.dependencies[0];
-    depsNode.dependency = depsNode.dependency ?? [];
+    // find jvm target
+    const desiredJvmTarget = this.readCompilerTarget(updated)?.trim() || "17";
 
-    // properties: kotlin.version, kotlin.compiler.jvmTarget
-    if (!props["kotlin.version"]) {
-      props["kotlin.version"] = [KOTLIN_VERSION];
-    }
-    const detectedJvmTarget = this.readCompilerTarget(pom) ?? "17";
-    if (!props["kotlin.compiler.jvmTarget"]) {
-      props["kotlin.compiler.jvmTarget"] = [detectedJvmTarget];
-    }
-
-    // dependencies
-    const deps = depsNode.dependency as any[];
-
-    const hasStdlib = deps.some(
-      (d: any) =>
-        d.groupId?.[0] === "org.jetbrains.kotlin" &&
-        d.artifactId?.[0] === "kotlin-stdlib",
-    );
-    if (!hasStdlib) {
-      deps.push({
-        groupId: ["org.jetbrains.kotlin"],
-        artifactId: ["kotlin-stdlib"],
-        version: ["${kotlin.version}"],
-      });
-    }
-
-    if (this.detectSpring(pom)) {
-      const hasReflect = deps.some(
-        (d: any) =>
-          d.groupId?.[0] === "org.jetbrains.kotlin" &&
-          d.artifactId?.[0] === "kotlin-reflect",
-      );
-      if (!hasReflect) {
-        deps.push({
-          groupId: ["org.jetbrains.kotlin"],
-          artifactId: ["kotlin-reflect"],
-          version: ["${kotlin.version}"],
-        });
+    const ensureProperties = (xml: string) => {
+      if (!/<properties>\s*[\s\S]*?<\/properties>/i.test(xml)) {
+        // create properties before first <dependencies> or near top after <name> if possible
+        const anchor =
+          xml.match(/<\/name>\s*/i)?.index ??
+          xml.match(/<\/version>\s*/i)?.index ??
+          0;
+        const insertPos = anchor
+          ? anchor +
+            (xml.match(/<\/name>\s*/i)?.[0]?.length ||
+              xml.match(/<\/version>\s*/i)?.[0]?.length ||
+              0)
+          : 0;
+        const propsBlock =
+          `\n${indent}<properties>\n` +
+          `${indent}${indent}<kotlin.version>${KOTLIN_VERSION}</kotlin.version>\n` +
+          `${indent}${indent}<kotlin.compiler.jvmTarget>${desiredJvmTarget}</kotlin.compiler.jvmTarget>\n` +
+          `${indent}</properties>\n`;
+        return xml.slice(0, insertPos) + propsBlock + xml.slice(insertPos);
       }
+
+      // upsert 2 properties
+      const upsertProp = (xml2: string, key: string, value: string) => {
+        const re = new RegExp(
+          `(<properties>[\\s\\S]*?)(<${key}>[\\s\\S]*?<\\/${key}>)([\\s\\S]*?<\\/properties>)`,
+          "i",
+        );
+        if (re.test(xml2)) {
+          return xml2.replace(
+            new RegExp(`<${key}>[\\s\\S]*?<\\/${key}>`, "i"),
+            `<${key}>${value}</${key}>`,
+          );
+        } else {
+          // inject before </properties>
+          return xml2.replace(
+            /<\/properties>/i,
+            `${indent}${indent}<${key}>${value}<\/${key}>\n${indent}<\/properties>`,
+          );
+        }
+      };
+
+      let out = xml;
+      const hasKver =
+        /<properties>[\s\S]*?<kotlin\.version>[\s\S]*?<\/kotlin\.version>[\s\S]*?<\/properties>/i.test(
+          out,
+        );
+      if (!hasKver) {
+        out = out.replace(
+          /<\/properties>/i,
+          `${indent}${indent}<kotlin.version>${KOTLIN_VERSION}<\/kotlin.version>\n${indent}<\/properties>`,
+        );
+      } else {
+        out = upsertProp(out, "kotlin.version", KOTLIN_VERSION);
+      }
+
+      const hasJvmTarget =
+        /<properties>[\s\S]*?<kotlin\.compiler\.jvmTarget>[\s\S]*?<\/kotlin\.compiler\.jvmTarget>[\s\S]*?<\/properties>/i.test(
+          out,
+        );
+      if (!hasJvmTarget) {
+        out = out.replace(
+          /<\/properties>/i,
+          `${indent}${indent}<kotlin.compiler.jvmTarget>${desiredJvmTarget}<\/kotlin.compiler.jvmTarget>\n${indent}<\/properties>`,
+        );
+      } else {
+        out = upsertProp(out, "kotlin.compiler.jvmTarget", desiredJvmTarget);
+      }
+      return out;
+    };
+
+    updated = ensureProperties(updated);
+
+    // add <dependencies> with kotlin-stdlib (+ reflect if Spring Boot)
+    const ensureDependenciesSection = (xml: string) => {
+      if (!/<dependencies>\s*[\s\S]*?<\/dependencies>/i.test(xml)) {
+        // create just before </project>
+        const depBlock = `\n${indent}<dependencies>\n${indent}</dependencies>\n`;
+        return xml.replace(/<\/project>\s*$/i, `${depBlock}</project>`);
+      }
+      return xml;
+    };
+
+    updated = ensureDependenciesSection(updated);
+
+    const upsertDependency = (
+      xml: string,
+      gid: string,
+      aid: string,
+      version?: string,
+    ) => {
+      const cleaned = this.stripXmlComments(xml);
+      const exists = new RegExp(
+        `<dependency>\\s*<groupId>\\s*${gid.replace(
+          /\./g,
+          "\\.",
+        )}\\s*<\\/groupId>\\s*<artifactId>\\s*${aid}\\s*<\\/artifactId>[\\s\\S]*?<\\/dependency>`,
+        "i",
+      ).test(cleaned);
+      if (exists) {
+        return xml;
+      }
+
+      const dep =
+        `${indent}${indent}<dependency>\n` +
+        `${indent}${indent}${indent}<groupId>${gid}</groupId>\n` +
+        `${indent}${indent}${indent}<artifactId>${aid}</artifactId>\n` +
+        (version
+          ? `${indent}${indent}${indent}<version>${version}</version>\n`
+          : "") +
+        `${indent}${indent}</dependency>\n`;
+
+      return xml.replace(/<\/dependencies>/i, `${dep}${indent}</dependencies>`);
+    };
+
+    // stdlib
+    if (!this.hasKotlinStdlib(updated)) {
+      updated = upsertDependency(
+        updated,
+        "org.jetbrains.kotlin",
+        "kotlin-stdlib",
+        "${kotlin.version}",
+      );
     }
 
-    // --- Build plugins ---
-    const build = pom.project.build[0];
-    build.plugins = build.plugins ?? [{}];
-    build.plugins[0].plugin = build.plugins[0].plugin ?? [];
-    const plugins = build.plugins[0].plugin as any[];
-
-    const findPlugin = (gid: string, aid: string) =>
-      plugins.find(
-        (p: any) => p.groupId?.[0] === gid && p.artifactId?.[0] === aid,
+    const springDetected = this.detectSpringBoot(updated);
+    if (springDetected && !this.hasKotlinReflect(updated)) {
+      updated = upsertDependency(
+        updated,
+        "org.jetbrains.kotlin",
+        "kotlin-reflect",
+        "${kotlin.version}",
       );
+    }
 
-    let kotlinPlugin = findPlugin(
+    // ensure <build><plugins> exists
+    const ensureBuildPlugins = (xml: string) => {
+      let out = xml;
+      if (!/<build>\s*[\s\S]*?<\/build>/i.test(out)) {
+        out = out.replace(
+          /<\/project>\s*$/i,
+          `\n${indent}<build>\n${indent}${indent}<plugins>\n${indent}${indent}</plugins>\n${indent}</build>\n</project>`,
+        );
+      } else if (
+        !/<build>[\s\S]*?<plugins>[\s\S]*?<\/plugins>[\s\S]*?<\/build>/i.test(
+          out,
+        )
+      ) {
+        out = out.replace(
+          /<\/build>/i,
+          `${indent}${indent}<plugins>\n${indent}${indent}</plugins>\n${indent}</build>`,
+        );
+      }
+      return out;
+    };
+
+    updated = ensureBuildPlugins(updated);
+
+    const upsertPlugin = (
+      xml: string,
+      gid: string,
+      aid: string,
+      bodyXml: string,
+    ) => {
+      const pluginRe = new RegExp(
+        `<plugin>\\s*<groupId>\\s*${gid.replace(
+          /\./g,
+          "\\.",
+        )}\\s*<\\/groupId>\\s*<artifactId>\\s*${aid}\\s*<\\/artifactId>[\\s\\S]*?<\\/plugin>`,
+        "i",
+      );
+      if (pluginRe.test(xml)) {
+        return xml.replace(pluginRe, bodyXml);
+      }
+      // append inside </plugins>
+      return xml.replace(
+        /<\/plugins>/i,
+        `${bodyXml}\n${indent}${indent}</plugins>`,
+      );
+    };
+
+    // kotlin-maven-plugin as according to tutorial
+    const kotlinPluginXml = `${indent}${indent}<plugin>
+${indent}${indent}${indent}<groupId>org.jetbrains.kotlin</groupId>
+${indent}${indent}${indent}<artifactId>kotlin-maven-plugin</artifactId>
+${indent}${indent}${indent}<version>\${kotlin.version}</version>
+${indent}${indent}${indent}<configuration>
+${indent}${indent}${indent}${indent}<jvmTarget>\${kotlin.compiler.jvmTarget}</jvmTarget>${
+      configureInPlaceReplacements
+        ? `
+${indent}${indent}${indent}${indent}<sourceDirs>
+${indent}${indent}${indent}${indent}${indent}<source>src/main/java</source>
+${indent}${indent}${indent}${indent}${indent}<source>src/main/kotlin</source>
+${indent}${indent}${indent}${indent}</sourceDirs>
+${indent}${indent}${indent}${indent}<testSourceDirs>
+${indent}${indent}${indent}${indent}${indent}<source>src/test/java</source>
+${indent}${indent}${indent}${indent}${indent}<source>src/test/kotlin</source>
+${indent}${indent}${indent}${indent}</testSourceDirs>`
+        : ``
+    }
+${indent}${indent}${indent}${indent}<compilerPlugins>
+${indent}${indent}${indent}${indent}${indent}<plugin>spring</plugin>
+${indent}${indent}${indent}${indent}${indent}<plugin>all-open</plugin>
+${indent}${indent}${indent}${indent}${indent}<plugin>jpa</plugin>
+${indent}${indent}${indent}${indent}</compilerPlugins>
+${indent}${indent}${indent}</configuration>
+${indent}${indent}${indent}<executions>
+${indent}${indent}${indent}${indent}<execution>
+${indent}${indent}${indent}${indent}${indent}<id>compile-kotlin</id>
+${indent}${indent}${indent}${indent}${indent}<phase>compile</phase>
+${indent}${indent}${indent}${indent}${indent}<goals><goal>compile</goal></goals>
+${indent}${indent}${indent}${indent}${indent}<configuration>
+${indent}${indent}${indent}${indent}${indent}${indent}<args>
+${indent}${indent}${indent}${indent}${indent}${indent}${indent}<arg>-Xjava-source-roots=\${project.basedir}/src/main/java</arg>
+${indent}${indent}${indent}${indent}${indent}${indent}</args>
+${indent}${indent}${indent}${indent}${indent}</configuration>
+${indent}${indent}${indent}${indent}</execution>
+${indent}${indent}${indent}${indent}<execution>
+${indent}${indent}${indent}${indent}${indent}<id>test-compile-kotlin</id>
+${indent}${indent}${indent}${indent}${indent}<phase>test-compile</phase>
+${indent}${indent}${indent}${indent}${indent}<goals><goal>test-compile</goal></goals>
+${indent}${indent}${indent}${indent}${indent}<configuration>
+${indent}${indent}${indent}${indent}${indent}${indent}<args>
+${indent}${indent}${indent}${indent}${indent}${indent}${indent}<arg>-Xjava-source-roots=\${project.basedir}/src/test/java</arg>
+${indent}${indent}${indent}${indent}${indent}${indent}</args>
+${indent}${indent}${indent}${indent}${indent}</configuration>
+${indent}${indent}${indent}${indent}</execution>
+${indent}${indent}${indent}</executions>
+${indent}${indent}${indent}<dependencies>
+${indent}${indent}${indent}${indent}<dependency>
+${indent}${indent}${indent}${indent}${indent}<groupId>org.jetbrains.kotlin</groupId>
+${indent}${indent}${indent}${indent}${indent}<artifactId>kotlin-maven-allopen</artifactId>
+${indent}${indent}${indent}${indent}${indent}<version>\${kotlin.version}</version>
+${indent}${indent}${indent}${indent}</dependency>
+${indent}${indent}${indent}${indent}<dependency>
+${indent}${indent}${indent}${indent}${indent}<groupId>org.jetbrains.kotlin</groupId>
+${indent}${indent}${indent}${indent}${indent}<artifactId>kotlin-maven-noarg</artifactId>
+${indent}${indent}${indent}${indent}${indent}<version>\${kotlin.version}</version>
+${indent}${indent}${indent}${indent}</dependency>
+${indent}${indent}${indent}</dependencies>
+${indent}${indent}</plugin>`;
+
+    updated = upsertPlugin(
+      updated,
       "org.jetbrains.kotlin",
       "kotlin-maven-plugin",
+      kotlinPluginXml,
     );
 
-    const ensureArg = (execConf: any, argValue: string) => {
-      execConf.args = execConf.args ?? [{ arg: [] }];
-      const argArr = execConf.args[0].arg as string[];
-      if (!argArr.includes(argValue)) argArr.push(argValue);
-    };
+    // 5) maven-compiler-plugin (silence default-compile/testCompile and add explicit java compile steps as in the tutorial)
+    const mavenCompilerXml = `${indent}${indent}<plugin>
+${indent}${indent}${indent}<groupId>org.apache.maven.plugins</groupId>
+${indent}${indent}${indent}<artifactId>maven-compiler-plugin</artifactId>
+${indent}${indent}${indent}<version>3.14.0</version>
+${indent}${indent}${indent}<executions>
+${indent}${indent}${indent}${indent}<execution>
+${indent}${indent}${indent}${indent}${indent}<id>default-compile</id>
+${indent}${indent}${indent}${indent}${indent}<goals><goal>compile</goal></goals>
+${indent}${indent}${indent}${indent}${indent}<configuration><skipMain>true</skipMain></configuration>
+${indent}${indent}${indent}${indent}</execution>
+${indent}${indent}${indent}${indent}<execution>
+${indent}${indent}${indent}${indent}${indent}<id>compile-java</id>
+${indent}${indent}${indent}${indent}${indent}<phase>compile</phase>
+${indent}${indent}${indent}${indent}${indent}<goals><goal>compile</goal></goals>
+${indent}${indent}${indent}${indent}${indent}<configuration><release>\${java.version}</release></configuration>
+${indent}${indent}${indent}${indent}</execution>
+${indent}${indent}${indent}${indent}<execution>
+${indent}${indent}${indent}${indent}${indent}<id>default-testCompile</id>
+${indent}${indent}${indent}${indent}${indent}<goals><goal>testCompile</goal></goals>
+${indent}${indent}${indent}${indent}${indent}<configuration><skip>true</skip></configuration>
+${indent}${indent}${indent}${indent}</execution>
+${indent}${indent}${indent}${indent}<execution>
+${indent}${indent}${indent}${indent}${indent}<id>test-compile-java</id>
+${indent}${indent}${indent}${indent}${indent}<phase>test-compile</phase>
+${indent}${indent}${indent}${indent}${indent}<goals><goal>testCompile</goal></goals>
+${indent}${indent}${indent}${indent}${indent}<configuration><release>\${java.version}</release></configuration>
+${indent}${indent}${indent}${indent}</execution>
+${indent}${indent}${indent}</executions>
+${indent}${indent}</plugin>`;
 
-    const ensureCompilerPlugins = (conf: any) => {
-      conf.compilerPlugins = conf.compilerPlugins ?? [{ plugin: [] }];
-      const list = conf.compilerPlugins[0].plugin as string[];
-      const add = (v: string) => {
-        if (!list.includes(v)) list.push(v);
-      };
-      add("spring");
-      add("all-open");
-      add("jpa");
-    };
-
-    const ensurePluginDependency = (plg: any, gid: string, aid: string) => {
-      plg.dependencies = plg.dependencies ?? [{ dependency: [] }];
-      const arr = plg.dependencies[0].dependency as any[];
-      const exists = arr.some(
-        (d: any) => d.groupId?.[0] === gid && d.artifactId?.[0] === aid,
-      );
-      if (!exists) {
-        arr.push({
-          groupId: [gid],
-          artifactId: [aid],
-          version: ["${kotlin.version}"],
-        });
-      }
-    };
-
-    if (!kotlinPlugin) {
-      kotlinPlugin = {
-        groupId: ["org.jetbrains.kotlin"],
-        artifactId: ["kotlin-maven-plugin"],
-        version: ["${kotlin.version}"],
-        configuration: [
-          {
-            jvmTarget: ["${kotlin.compiler.jvmTarget}"],
-          },
-        ],
-        executions: [
-          {
-            execution: [
-              {
-                id: ["compile-kotlin"],
-                phase: ["compile"],
-                goals: [{ goal: ["compile"] }],
-                configuration: [
-                  {
-                    args: [{ arg: [`-Xjava-source-roots=\${project.basedir}/src/main/java`] }],
-                  },
-                ],
-              },
-              {
-                id: ["test-compile-kotlin"],
-                phase: ["test-compile"],
-                goals: [{ goal: ["test-compile"] }],
-                configuration: [
-                  {
-                    args: [{ arg: [`-Xjava-source-roots=\${project.basedir}/src/test/java`] }],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      };
-
-      if (configureInPlaceReplacements) {
-        kotlinPlugin.configuration[0].sourceDirs = [
-          { source: ["src/main/java", "src/main/kotlin"] },
-        ];
-        kotlinPlugin.configuration[0].testSourceDirs = [
-          { source: ["src/test/java", "src/test/kotlin"] },
-        ];
-      }
-      ensureCompilerPlugins(kotlinPlugin.configuration[0]);
-
-      ensurePluginDependency(
-        kotlinPlugin,
-        "org.jetbrains.kotlin",
-        "kotlin-maven-allopen",
-      );
-      ensurePluginDependency(
-        kotlinPlugin,
-        "org.jetbrains.kotlin",
-        "kotlin-maven-noarg",
-      );
-
-      plugins.push(kotlinPlugin);
-    } else {
-      kotlinPlugin.version = kotlinPlugin.version ?? ["${kotlin.version}"];
-      kotlinPlugin.configuration = kotlinPlugin.configuration ?? [{}];
-      const conf = kotlinPlugin.configuration[0];
-
-      if (!conf.jvmTarget) conf.jvmTarget = ["${kotlin.compiler.jvmTarget}"];
-      if (configureInPlaceReplacements) {
-        conf.sourceDirs = conf.sourceDirs ?? [{ source: [] }];
-        conf.testSourceDirs = conf.testSourceDirs ?? [{ source: [] }];
-        const src = conf.sourceDirs[0].source as string[];
-        const testSrc = conf.testSourceDirs[0].source as string[];
-        const addIfMissing = (arr: string[], v: string) => {
-          if (!arr.includes(v)) arr.push(v);
-        };
-        addIfMissing(src, "src/main/java");
-        addIfMissing(src, "src/main/kotlin");
-        addIfMissing(testSrc, "src/test/java");
-        addIfMissing(testSrc, "src/test/kotlin");
-      }
-      ensureCompilerPlugins(conf);
-
-      kotlinPlugin.executions = kotlinPlugin.executions ?? [{ execution: [] }];
-      const execs = kotlinPlugin.executions[0].execution as any[];
-
-      const upsertExec = (id: string, phase: string, javaRootsArg: string) => {
-        let e = execs.find((x: any) => (x.id?.[0] ?? "") === id);
-        if (!e) {
-          e = {
-            id: [id],
-            phase: [phase],
-            goals: [{ goal: [id.startsWith("test-") ? "test-compile" : "compile"] }],
-            configuration: [{}],
-          };
-          execs.push(e);
-        } else {
-          e.phase = [phase];
-          e.goals = [{ goal: [id.startsWith("test-") ? "test-compile" : "compile"] }];
-          e.configuration = e.configuration ?? [{}];
-        }
-        const econf = e.configuration[0];
-        ensureArg(econf, javaRootsArg);
-      };
-
-      upsertExec(
-        "compile-kotlin",
-        "compile",
-        "-Xjava-source-roots=${project.basedir}/src/main/java",
-      );
-      upsertExec(
-        "test-compile-kotlin",
-        "test-compile",
-        "-Xjava-source-roots=${project.basedir}/src/test/java",
-      );
-
-      ensurePluginDependency(
-        kotlinPlugin,
-        "org.jetbrains.kotlin",
-        "kotlin-maven-allopen",
-      );
-      ensurePluginDependency(
-        kotlinPlugin,
-        "org.jetbrains.kotlin",
-        "kotlin-maven-noarg",
-      );
-    }
-
-    let mavenCompiler = findPlugin(
+    updated = upsertPlugin(
+      updated,
       "org.apache.maven.plugins",
       "maven-compiler-plugin",
+      mavenCompilerXml,
     );
-    if (!mavenCompiler) {
-      mavenCompiler = {
-        groupId: ["org.apache.maven.plugins"],
-        artifactId: ["maven-compiler-plugin"],
-        version: ["3.14.0"],
-        executions: [
-          {
-            execution: [
-              {
-                id: ["default-compile"],
-                goals: [{ goal: ["compile"] }],
-                configuration: [{ skipMain: ["true"] }],
-              },
-              {
-                id: ["compile-java"],
-                phase: ["compile"],
-                goals: [{ goal: ["compile"] }],
-                configuration: [{ release: ["${java.version}"] }],
-              },
-              {
-                id: ["default-testCompile"],
-                goals: [{ goal: ["testCompile"] }],
-                configuration: [{ skip: ["true"] }],
-              },
-              {
-                id: ["test-compile-java"],
-                phase: ["test-compile"],
-                goals: [{ goal: ["testCompile"] }],
-                configuration: [{ release: ["${java.version}"] }],
-              },
-            ],
-          },
-        ],
-      };
-      plugins.push(mavenCompiler);
-    } else {
-      mavenCompiler.version = mavenCompiler.version ?? ["3.14.0"];
-      mavenCompiler.executions = mavenCompiler.executions ?? [{ execution: [] }];
-      const execs = mavenCompiler.executions[0].execution as any[];
 
-      const setExec = (id: string, update: any) => {
-        let e = execs.find((x: any) => (x.id?.[0] ?? "") === id);
-        if (!e) {
-          e = { id: [id] };
-          execs.push(e);
-        }
-        Object.assign(e, update);
-      };
-
-      setExec("default-compile", {
-        goals: [{ goal: ["compile"] }],
-        configuration: [{ skipMain: ["true"] }],
-      });
-      setExec("compile-java", {
-        phase: ["compile"],
-        goals: [{ goal: ["compile"] }],
-        configuration: [{ release: ["${java.version}"] }],
-      });
-      setExec("default-testCompile", {
-        goals: [{ goal: ["testCompile"] }],
-        configuration: [{ skip: ["true"] }],
-      });
-      setExec("test-compile-java", {
-        phase: ["test-compile"],
-        goals: [{ goal: ["testCompile"] }],
-        configuration: [{ release: ["${java.version}"] }],
-      });
-    }
-
-    const updated = builder.buildObject(pom);
-    if (updated !== text) {
+    // final write if changed
+    if (updated !== original) {
       const edit = new vscode.WorkspaceEdit();
       edit.replace(uri, new vscode.Range(0, 0, doc.lineCount, 0xffff), updated);
       await vscode.workspace.applyEdit(edit);

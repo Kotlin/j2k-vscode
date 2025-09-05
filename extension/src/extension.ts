@@ -4,7 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 
 import { detectVCS, VCSFileRenamer } from "./vcs";
-import { detectBuildSystem } from "./build-systems";
+import { detectBuildSystems } from "./build-systems";
 import { MemoryContentProvider } from "./batch/memory";
 import { Job, Queue } from "./batch/queue";
 import { CompletedJob, Worker } from "./batch/worker";
@@ -87,29 +87,38 @@ export async function activate(context: vscode.ExtensionContext) {
   // to preserve VC history, lazy load vcsHandler
   let vcsHandler: VCSFileRenamer;
 
-  const buildSystem = await detectBuildSystem();
+  const buildSystems = await detectBuildSystems();
+  outputChannel.appendLine(
+    `Detected build systems: ${buildSystems.map((s) => s.name).join(", ")}`,
+  );
 
-  outputChannel.appendLine(`Output channel detected: ${buildSystem.name}`);
+  for (const system of buildSystems) {
+    if (system.name === "none") {
+      continue;
+    }
 
-  if (await buildSystem.needsKotlin()) {
-    outputChannel.appendLine(
-      `Build system ${buildSystem.name} requires Kotlin to be configured.`,
-    );
-    vscode.window
-      .showInformationMessage(
-        "This project currently builds only Java. Would you like to add Kotlin support automatically?",
-        "Add Kotlin",
-        "Not now",
-      )
-      .then(async (choice) => {
-        if (choice !== "Add Kotlin") {
-          return;
-        }
+    if (await system.needsKotlin()) {
+      outputChannel.appendLine(
+        `Build system ${system.name} requires Kotlin to be configured.`,
+      );
 
-        outputChannel.append("Configuring Kotlin from prompt");
+      vscode.window
+        .showInformationMessage(
+          `This ${system.name} project currently builds only Java. Would you like to add Kotlin support?`,
+          "Add Kotlin",
+          "Not now",
+        )
+        .then(async (choice) => {
+          if (choice !== "Add Kotlin") {
+            return;
+          }
 
-        await buildSystem.enableKotlin();
-      });
+          outputChannel.appendLine(
+            `Configuring Kotlin from prompt for ${system.name}`,
+          );
+          await system.enableKotlin();
+        });
+    }
   }
 
   const queue = new Queue();
@@ -321,11 +330,33 @@ export async function activate(context: vscode.ExtensionContext) {
   // bind the enable kotlin function to a command
   context.subscriptions.push(
     vscode.commands.registerCommand("j2k.configureKotlin", async () => {
-      outputChannel.append("Manual trigger: Configuring Kotlin");
-      const buildSystem = await detectBuildSystem();
+      outputChannel.appendLine("Manual trigger: Configuring Kotlin");
 
-      if (await buildSystem.needsKotlin()) {
-        await buildSystem.enableKotlin();
+      const systems = await detectBuildSystems();
+
+      const actionable = systems.filter((s) => s.name !== "none");
+      if (actionable.length === 0) {
+        outputChannel.appendLine("No supported build system detected.");
+        return;
+      }
+
+      for (const system of actionable) {
+        try {
+          outputChannel.appendLine(`Checking Kotlin setup for ${system.name}…`);
+          if (await system.needsKotlin()) {
+            outputChannel.appendLine(`Enabling Kotlin for ${system.name}…`);
+            await system.enableKotlin();
+            outputChannel.appendLine(`Kotlin configured for ${system.name}.`);
+          } else {
+            outputChannel.appendLine(
+              `Kotlin already configured for ${system.name}.`,
+            );
+          }
+        } catch (err: any) {
+          outputChannel.appendLine(
+            `Failed to configure Kotlin for ${system.name}: ${err?.message ?? String(err)}`,
+          );
+        }
       }
     }),
   );

@@ -127,11 +127,17 @@ export async function activate(context: vscode.ExtensionContext) {
   const worker = new Worker(context, queue, mem, outputChannel);
   worker.start();
 
+  // this logic has been factored out so that if we want to keep going after
+  // cancel action as well, then we can do this
   async function tryOpenNextConversion() {
     const nextCompleted = worker.completed.find(c => !c.error);
 
     if (nextCompleted) {
       await vscode.commands.executeCommand("j2k.completed.openDiff", nextCompleted);
+
+      vscode.window.showInformationMessage(
+        `Automatically opened next Kotlin conversion (${path.basename(nextCompleted.resultUri.fsPath)}) to be reviewed.`
+      );
     }
   }
 
@@ -198,16 +204,20 @@ export async function activate(context: vscode.ExtensionContext) {
         const left = await vscode.workspace.openTextDocument(
           completedJob.job.javaUri,
         );
-        let right = await vscode.workspace.openTextDocument({
-          language: "kotlin",
-          content: completedJob.kotlinText,
-        });
 
-        if (right.languageId !== "kotlin") {
-          right = await vscode.languages.setTextDocumentLanguage(
-            right,
-            "kotlin",
-          );
+        const rightUri = vscode.Uri.from({
+          scheme: "untitled",
+          path: path.basename(completedJob.job.javaUri.fsPath, ".java") + ".kt",
+        });
+        let right = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === rightUri.toString());
+        if (!right) {
+          right = await vscode.workspace.openTextDocument(rightUri);
+          right = await vscode.languages.setTextDocumentLanguage(right, "kotlin");
+
+          // provide actual text
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(rightUri, new vscode.Range(0,0,0,0), completedJob.kotlinText);
+          await vscode.workspace.applyEdit(edit);
         }
 
         javaUri = completedJob.job.javaUri;

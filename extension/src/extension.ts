@@ -127,20 +127,6 @@ export async function activate(context: vscode.ExtensionContext) {
   const worker = new Worker(context, queue, mem, outputChannel);
   worker.start();
 
-  // this logic has been factored out so that if we want to keep going after
-  // cancel action as well, then we can do this
-  async function tryOpenNextConversion() {
-    const nextCompleted = worker.completed.find(c => !c.error);
-
-    if (nextCompleted) {
-      await vscode.commands.executeCommand("j2k.completed.openDiff", nextCompleted);
-
-      vscode.window.showInformationMessage(
-        `Automatically opened next Kotlin conversion (${path.basename(nextCompleted.resultUri.fsPath)}) to be reviewed.`
-      );
-    }
-  }
-
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem),
   );
@@ -152,7 +138,31 @@ export async function activate(context: vscode.ExtensionContext) {
   vscode.window.registerTreeDataProvider("j2k.queue", queueProvider);
 
   const completedProvider = new CompletedListProvider(worker);
-  vscode.window.registerTreeDataProvider("j2k.completed", completedProvider);
+  const completedTree = vscode.window.createTreeView("j2k.completed", {
+    treeDataProvider: completedProvider
+  });
+  context.subscriptions.push(completedTree);
+
+  // this logic has been factored out so that if we want to keep going after
+  // cancel action as well, then we can do this
+  async function tryOpenNextConversion() {
+    const nextCompleted = worker.completed.find(c => !c.error);
+
+    if (nextCompleted) {
+      await vscode.commands.executeCommand("j2k.completed.openDiff", nextCompleted);
+
+      // we are opening a conversion before it's been converted, so it's .java here
+      // also remains consistent with the tree view
+      vscode.window.showInformationMessage(
+        `Automatically opened next Kotlin conversion (${path.basename(nextCompleted.resultUri.fsPath, ".kt")}.java) to be reviewed.`
+      );
+
+      // try to also highlight it in the tree view so it's visually appealing
+      await completedTree
+        .reveal(nextCompleted, { select: true, focus: false })
+        .then(() => {}, () => {});
+    }
+  }
 
   const queueFile = vscode.commands.registerCommand(
     "j2k.queueFile",
@@ -280,8 +290,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
       worker.removeCompleted(currentJavaUri);
 
+      // here we are saving a kotlin file, so output kotlin Uri
       vscode.window.showInformationMessage(
-        `Conversion result for ${path.basename(currentJavaUri.fsPath)} saved successfully.`,
+        `Conversion result for ${path.basename(currentKotlinUri.fsPath)} saved successfully.`,
       );
 
       return await tryOpenNextConversion();

@@ -36,4 +36,9 @@ export class CompletedListProvider
 
     return item;
   }
+
+  getParent(completedJob: CompletedJob) {
+    // we aren't using a tree - we just have everything at the same level
+    return undefined;
+  }
 }

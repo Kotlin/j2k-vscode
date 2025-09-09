@@ -215,9 +215,11 @@ export async function activate(context: vscode.ExtensionContext) {
           completedJob.job.javaUri,
         );
 
+        const { dir, name } = path.parse(completedJob.job.javaUri.fsPath);
+
         const rightUri = vscode.Uri.from({
           scheme: "untitled",
-          path: path.basename(completedJob.job.javaUri.fsPath, ".java") + ".kt",
+          path: path.join(dir, name + ".kt"),
         });
         let right = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === rightUri.toString());
         if (!right) {

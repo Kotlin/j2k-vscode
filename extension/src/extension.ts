@@ -10,6 +10,7 @@ import { Job, Queue } from "./batch/queue";
 import { CompletedJob, Worker } from "./batch/worker";
 import { QueueListProvider } from "./batch/queue-view";
 import { CompletedListProvider } from "./batch/completed-view";
+import { applyPatch } from "@langchain/core/utils/json_patch";
 
 export function logFile(filename: string, content: string) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -137,7 +138,31 @@ export async function activate(context: vscode.ExtensionContext) {
   vscode.window.registerTreeDataProvider("j2k.queue", queueProvider);
 
   const completedProvider = new CompletedListProvider(worker);
-  vscode.window.registerTreeDataProvider("j2k.completed", completedProvider);
+  const completedTree = vscode.window.createTreeView("j2k.completed", {
+    treeDataProvider: completedProvider
+  });
+  context.subscriptions.push(completedTree);
+
+  // this logic has been factored out so that if we want to keep going after
+  // cancel action as well, then we can do this
+  async function tryOpenNextConversion() {
+    const nextCompleted = worker.completed.find(c => !c.error);
+
+    if (nextCompleted) {
+      await vscode.commands.executeCommand("j2k.completed.openDiff", nextCompleted);
+
+      // we are opening a conversion before it's been converted, so it's .java here
+      // also remains consistent with the tree view
+      vscode.window.showInformationMessage(
+        `Automatically opened next Kotlin conversion (${path.basename(nextCompleted.resultUri.fsPath, ".kt")}.java) to be reviewed.`
+      );
+
+      // try to also highlight it in the tree view so it's visually appealing
+      await completedTree
+        .reveal(nextCompleted, { select: true, focus: false })
+        .then(() => {}, () => {});
+    }
+  }
 
   const queueFile = vscode.commands.registerCommand(
     "j2k.queueFile",
@@ -189,16 +214,22 @@ export async function activate(context: vscode.ExtensionContext) {
         const left = await vscode.workspace.openTextDocument(
           completedJob.job.javaUri,
         );
-        let right = await vscode.workspace.openTextDocument({
-          language: "kotlin",
-          content: completedJob.kotlinText,
-        });
 
-        if (right.languageId !== "kotlin") {
-          right = await vscode.languages.setTextDocumentLanguage(
-            right,
-            "kotlin",
-          );
+        const { dir, name } = path.parse(completedJob.job.javaUri.fsPath);
+
+        const rightUri = vscode.Uri.from({
+          scheme: "untitled",
+          path: path.join(dir, name + ".kt"),
+        });
+        let right = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === rightUri.toString());
+        if (!right) {
+          right = await vscode.workspace.openTextDocument(rightUri);
+          right = await vscode.languages.setTextDocumentLanguage(right, "kotlin");
+
+          // provide actual text
+          const edit = new vscode.WorkspaceEdit();
+          edit.replace(rightUri, new vscode.Range(0,0,0,0), completedJob.kotlinText);
+          await vscode.workspace.applyEdit(edit);
         }
 
         javaUri = completedJob.job.javaUri;
@@ -260,6 +291,13 @@ export async function activate(context: vscode.ExtensionContext) {
       );
 
       worker.removeCompleted(currentJavaUri);
+
+      // here we are saving a kotlin file, so output kotlin Uri
+      vscode.window.showInformationMessage(
+        `Conversion result for ${path.basename(currentKotlinUri.fsPath)} saved successfully.`,
+      );
+
+      return await tryOpenNextConversion();
     },
   );
 
@@ -276,6 +314,10 @@ export async function activate(context: vscode.ExtensionContext) {
       if (currentJavaUri) {
         worker.removeCompleted(currentJavaUri);
       }
+
+      vscode.window.showInformationMessage(
+        `Conversion cancelled for ${path.basename(currentJavaUri.fsPath)}`,
+      );
     },
   );
 

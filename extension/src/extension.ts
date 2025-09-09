@@ -10,6 +10,7 @@ import { Job, Queue } from "./batch/queue";
 import { CompletedJob, Worker } from "./batch/worker";
 import { QueueListProvider } from "./batch/queue-view";
 import { CompletedListProvider } from "./batch/completed-view";
+import { applyPatch } from "@langchain/core/utils/json_patch";
 
 export function logFile(filename: string, content: string) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -125,6 +126,14 @@ export async function activate(context: vscode.ExtensionContext) {
   const mem = new MemoryContentProvider();
   const worker = new Worker(context, queue, mem, outputChannel);
   worker.start();
+
+  async function tryOpenNextConversion() {
+    const nextCompleted = worker.completed.find(c => !c.error);
+
+    if (nextCompleted) {
+      await vscode.commands.executeCommand("j2k.completed.openDiff", nextCompleted);
+    }
+  }
 
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem),
@@ -260,6 +269,12 @@ export async function activate(context: vscode.ExtensionContext) {
       );
 
       worker.removeCompleted(currentJavaUri);
+
+      vscode.window.showInformationMessage(
+        `Conversion result for ${path.basename(currentJavaUri.fsPath)} saved successfully.`,
+      );
+
+      return await tryOpenNextConversion();
     },
   );
 
@@ -276,6 +291,10 @@ export async function activate(context: vscode.ExtensionContext) {
       if (currentJavaUri) {
         worker.removeCompleted(currentJavaUri);
       }
+
+      vscode.window.showInformationMessage(
+        `Conversion cancelled for ${path.basename(currentJavaUri.fsPath)}`,
+      );
     },
   );
 

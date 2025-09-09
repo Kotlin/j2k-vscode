@@ -78,9 +78,43 @@
         "command": "j2k.configureKotlin",
         "title": "Configure Kotlin for workspace",
         "category": "J2K"
+      },
+      {
+        "command": "j2k.queue.cancelJob",
+        "title": "Stop",
+        "icon": "$(stop)"
+      },
+      {
+        "command": "j2k.queue.removeJob",
+        "title": "Cancel",
+        "icon": "$(close)"
+      },
+      {
+        "command": "j2k.queue.cancelAll",
+        "title": "Cancel All",
+        "icon": "$(close-all)"
       }
     ],
     "menus": {
+      "view/item/context": [
+        {
+          "command": "j2k.queue.cancelJob",
+          "when": "view == j2k.queue && viewItem == jobRunning",
+          "group": "inline@1"
+        },
+        {
+          "command": "j2k.queue.removeJob",
+          "when": "view == j2k.queue && viewItem == jobQueued",
+          "group": "inline@1"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "j2k.queue.cancelAll",
+          "when": "view == j2k.queue",
+          "group": "navigation@100"
+        }
+      ],
       "explorer/context": [
         {
           "command": "j2k.queueFile",
@@ -215,7 +249,6 @@
     "@langchain/ollama": "^0.2.3",
     "@langchain/openai": "^0.5.18",
     "java-parser": "^3.0.1",
-    "langchain": "^0.3.29",
-    "xml2js": "^0.6.2"
+    "langchain": "^0.3.29"
   }
 }

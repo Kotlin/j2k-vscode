@@ -33,6 +33,8 @@ export class QueueListProvider implements vscode.TreeDataProvider<Job> {
 
     const isRunning = this.worker.current?.id === job.id;
 
+    item.contextValue = isRunning ? "jobRunning" : "jobQueued";
+
     item.iconPath = isRunning
       ? new vscode.ThemeIcon(
           "sync~spin",

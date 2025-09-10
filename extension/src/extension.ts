@@ -191,9 +191,9 @@ export async function activate(context: vscode.ExtensionContext) {
         );
 
         queue.enqueue(uri);
-      });
 
-      vscode.commands.executeCommand("workbench.view.extension.j2k");
+        vscode.commands.executeCommand("workbench.view.extension.j2k");
+      });
     },
   );
 

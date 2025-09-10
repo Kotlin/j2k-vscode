@@ -176,14 +176,24 @@ export async function activate(context: vscode.ExtensionContext) {
       const javaUris = await normaliseSelection(selected);
 
       javaUris.forEach((uri: vscode.Uri) => {
+        const queued = queue.toArray().some(item => item.javaUri.fsPath === uri.fsPath);
+        const running = worker.current && worker.current.javaUri.fsPath === uri.fsPath;
+
+        if (queued || running) {
+          outputChannel.appendLine(`queueFile: skipped ${path.basename(uri.fsPath)} (already in queue)`);
+          vscode.window.showInformationMessage(`${path.basename(uri.fsPath)} is already in the queue.`);
+
+          return;
+        }
+
         outputChannel.appendLine(
           `queueFile: Enqueued ${path.basename(uri.fsPath)}`,
         );
 
         queue.enqueue(uri);
-      });
 
-      vscode.commands.executeCommand("workbench.view.extension.j2k");
+        vscode.commands.executeCommand("workbench.view.extension.j2k");
+      });
     },
   );
 

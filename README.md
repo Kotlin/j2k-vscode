@@ -4,7 +4,7 @@ A VS Code extension which provides one-click, review-before-you-commit Java to K
 
 ## Demo
 
-https://github.com/user-attachments/assets/d9207f77-b4ca-4168-a418-92454a4d4a51
+https://github.com/user-attachments/assets/1bb2b7c8-33c8-4f0c-96f2-85cab398ab50
 
 In the demo, a new project is opened, Kotlin is configured automatically, and converting a singular file/multiple files in succession is demonstrated. The accept/reject workflow is also demonstrated, with the ability to make desired changes before committing the changes. Additionally, integration with Git is demonstrated, so that version control history is preserved across the conversion.
 

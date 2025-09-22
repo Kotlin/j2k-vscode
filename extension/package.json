@@ -15,7 +15,7 @@
   ],
   "activationEvents": [
     "onLanguage:java",
-    "onStartupFinished"
+    "workspaceContains:**/*.java"
   ],
   "extensionDependencies": [
     "vscode.git"

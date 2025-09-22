@@ -72,8 +72,18 @@ This extension contributes the following settings:
 
 ## Release Notes
 
-### 1.0.0
+### 0.2.0
 
-Upcoming!
+Initial unstable release.
+
+```diff
++ Convert a file/multiple files between Java and Kotlin
++ Git integration (preserves VCS history)
++ Maven and Gradle integration (basic)
+```
+
+## Planned features
+
+- Advanced build system integration (multiple build files, etc.)
 
 [Note: this is a copy of the README under `extension/`.]

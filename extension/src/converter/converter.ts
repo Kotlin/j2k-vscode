@@ -8,6 +8,7 @@ import { BaseMessage } from "@langchain/core/messages";
 
 import * as vscode from "vscode";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { detectTechnologies } from "./detect-technologies";
 
 const TASK_CONTEXT =
   "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist.";
@@ -497,7 +498,10 @@ async function convertUsingCopilot(
 
   outputChannel.appendLine(`convertUsingCopilot: Using model ${model.id}`);
 
-  const prompt = getPrompt(javaCode);
+  // we need to also deliver the actual extra parts of the prompts if required
+  const technologiesUsed = detectTechnologies(javaCode);
+
+  const prompt = getPrompt(javaCode, technologiesUsed);
   const messages = await prompt.formatMessages({});
 
   outputChannel.appendLine(

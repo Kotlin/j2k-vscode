@@ -5,8 +5,8 @@ export function detectTechnologies(code: string) {
   const technologiesUsed = {
     spring: false,
     lombok: false,
-    hibernate: false
-  }
+    hibernate: false,
+  };
 
   // detect for imports in order to determine whether
   // a technology is being used within the code or not

@@ -18,7 +18,17 @@ export const INVARIANTS = `In each stage of your chain of thought, the following
   </rule>
 </invariant>
 <invariant>
-  4: Ensure the output result is in Kotlin.
+  4: Preserve all Javadoc comments.
+
+  <rule>
+    In the first stage, convert any Javadoc comments to KDoc comments.
+  </rule>
+  <rule>
+    In all other stages, carry forwards the KDoc comments, preserving information where structure changes.
+  </rule>
+</invariant>
+<invariant>
+  5: Ensure the output result is in Kotlin.
 
   <rule>
     The emitted code must be syntactically valid Kotlin.

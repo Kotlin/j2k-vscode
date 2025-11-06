@@ -88,7 +88,7 @@ export async function activate(context: vscode.ExtensionContext) {
       sessionBeginIfRequired();
       vscode.window.showInformationMessage("J2K: Conversion session started.");
     })
-  )
+  );
 
   function inDiff(editor: vscode.TextEditor | undefined): boolean {
     if (!editor) {
@@ -477,7 +477,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // reset session state
         sessionActive = false;
         sessionAcceptedFiles = [];
-        vscode.commands.executeCommand("setContext", "j2k.sessionActive", false)
+        vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
       }
     })
   );

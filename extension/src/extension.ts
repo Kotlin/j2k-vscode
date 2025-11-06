@@ -66,6 +66,29 @@ export async function activate(context: vscode.ExtensionContext) {
   // and the accept/cancel commands
   let javaUri: vscode.Uri;
   let kotlinUri: vscode.Uri;
+  
+  // state required for conversion session
+  let sessionActive = false;
+  let sessionAcceptedFiles: vscode.Uri = [];
+  vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
+  
+
+  function sessionBegin() {
+    if (sessionActive) {
+      return;
+    }
+    
+    sessionActive = true;
+    sessionAcceptedFiles = [];
+    vscode.commands.executeCommand("setContext", "j2k.sessionActive", true);
+  }
+  
+  context.subscriptions.push(
+    vscode.commands.registerCommand("j2k.startConversionSession", () => {
+      sessionBegin();
+      vscode.window.showInformationMessage("J2K: Conversion session started.");
+    })
+  )
 
   function inDiff(editor: vscode.TextEditor | undefined): boolean {
     if (!editor) {

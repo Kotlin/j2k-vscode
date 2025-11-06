@@ -69,11 +69,11 @@ export async function activate(context: vscode.ExtensionContext) {
   
   // state required for conversion session
   let sessionActive = false;
-  let sessionAcceptedFiles: vscode.Uri = [];
+  let sessionAcceptedFiles: vscode.Uri[] = [];
   vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
   
 
-  function sessionBegin() {
+  function sessionBeginIfRequired() {
     if (sessionActive) {
       return;
     }
@@ -85,7 +85,7 @@ export async function activate(context: vscode.ExtensionContext) {
   
   context.subscriptions.push(
     vscode.commands.registerCommand("j2k.startConversionSession", () => {
-      sessionBegin();
+      sessionBeginIfRequired();
       vscode.window.showInformationMessage("J2K: Conversion session started.");
     })
   )
@@ -190,6 +190,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const queueFile = vscode.commands.registerCommand(
     "j2k.queueFile",
     async (resource?: vscode.Uri, resources?: vscode.Uri[]) => {
+      sessionBeginIfRequired();
       const selected = resources?.length
         ? resources
         : resource
@@ -316,7 +317,14 @@ export async function activate(context: vscode.ExtensionContext) {
       const logFileName = `${originalBase}_polished.kt`;
       logFile(logFileName, replacementCode);
 
-      await vcsHandler.stageConversionReplacement(kotlinReplacement);
+      if (sessionActive) {
+        sessionAcceptedFiles.push(kotlinReplacement);
+        if (typeof vcsHandler.stageWithoutCommit === "function") {
+          await vcsHandler.stageWithoutCommit(kotlinReplacement);
+        }
+      } else {
+        await vcsHandler.stageConversionReplacement(kotlinReplacement);
+      }
 
       // tidy up any changed state
       await vscode.commands.executeCommand(
@@ -378,6 +386,9 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("j2k.cancelFromToolbar", () =>
       vscode.commands.executeCommand("j2k.cancelConversion"),
     ),
+    vscode.commands.registerCommand("j2k.commitSessionFromToolbar", () =>
+      vscode.commands.executeCommand("j2k.commitConversionSession"),
+    ),
   );
 
   // api key storage
@@ -434,6 +445,41 @@ export async function activate(context: vscode.ExtensionContext) {
         }
       }
     }),
+  );
+  
+  context.subscriptions.push(
+    vscode.commands.registerCommand("j2k.commitConversionSession", async () => {
+      if (!sessionActive) {
+        vscode.window.showErrorMessage("No active conversion session.");
+        return;
+      }
+      
+      const suggestedText = `Convert ${sessionAcceptedFiles.length} files to Kotlin`;
+      const name = await vscode.window.showInputBox({
+        prompt: "Give this coversion session a name (optional)",
+        placeHolder: suggestedText
+      });
+
+      const message = name && name.trim().length > 0 ? name!.trim() : suggestedText;
+
+      try {
+        const vcsHandler = await detectVCS(outputChannel);
+        if (typeof vcsHandler.commitAll === "function") {
+          await vcsHandler.commitAll(sessionAcceptedFiles, message);
+        }
+        // nothing to do for non-vcs
+
+        vscode.window.showInformationMessage(`Committed session: ${message}`);
+      } catch (err: any) {
+        vscode.window.showErrorMessage(`Failed to commit session: ${err?.message ?? String(err)}`);
+        return;
+      } finally {
+        // reset session state
+        sessionActive = false;
+        sessionAcceptedFiles = [];
+        vscode.commands.executeCommand("setContext", "j2k.sessionActive", false)
+      }
+    })
   );
 }
 

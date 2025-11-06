@@ -70,4 +70,25 @@ export class GitFileRenamer implements VCSFileRenamer {
 
     this.channel.appendLine(`GitFileRenamer: Committed the Kotlin replacement`);
   }
+  
+  async stageWithoutCommit(kotlinUri: vscode.Uri): Promise<void> {
+    const repo: Repository = this.api.getRepository(kotlinUri)!;
+    await repo.add([kotlinUri.fsPath]);
+
+    this.channel.appendLine(
+      `GitFileRenamer: Staged ${path.basename(kotlinUri.fsPath)} (no commit made)`,
+    );
+  }
+  
+  async commitAll(uris: vscode.Uri[], message: string): Promise<void> {
+    if (uris.length === 0) {
+      return;
+    }
+    
+    const repo: Repository = this.api.getRepository(uris[0])!;
+
+    await repo.add(uris.map(u => u.fsPath));
+    await repo.commit(message || `Convert ${uris.length} files to Kotlin`);
+    this.channel.appendLine(`GitFileRenamer: Committed ${uris.length} files`);
+  }
 }

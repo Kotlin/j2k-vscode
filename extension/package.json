@@ -50,6 +50,16 @@
         "category": "J2K"
       },
       {
+        "command": "j2k.commitConversionSession",
+        "title": "Commit Conversion Session",
+        "category": "J2K"
+      },
+      {
+        "command": "j2k.commitSessionFromToolbar",
+        "title": "Commit Session",
+        "category": "J2K"
+      },
+      {
         "command": "j2k.queueFile",
         "title": "Convert to Kotlin",
         "category": "J2K"
@@ -115,8 +125,24 @@
           "when": "false"
         },
         {
+          "command": "j2k.commitSessionFromToolbar",
+          "when": "false"
+        },
+        {
           "command": "j2k.configureKotlin",
           "when": "workspaceFolderCount != 0"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "j2k.commitConversionSession",
+          "when": "view == j2k.queue && j2k.sessionActive",
+          "group": "navigation@3"
+        },
+        {
+          "command": "j2k.commitConversionSession",
+          "when": "view == j2k.completed && j2k.sessionActive",
+          "group": "navigation@3"
         }
       ]
     },

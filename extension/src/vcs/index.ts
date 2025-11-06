@@ -12,6 +12,12 @@ export interface VCSFileRenamer {
   renameAndCommit(oldUri: Uri, newUri: Uri): Promise<void>;
 
   stageConversionReplacement(kotlinUri: Uri): Promise<void>;
+  
+  /* Stage only. */
+  stageWithoutCommit?(kotlinUri: Uri): Promise<void>;
+  
+  /* Single commit for whole session. */
+  commitAll(uris: Uri[], message: string): Promise<void>
 }
 
 export async function detectVCS(

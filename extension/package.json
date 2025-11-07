@@ -34,6 +34,10 @@
     "views": {
       "j2k": [
         {
+          "id": "j2k.accepted",
+          "name": "Accepted Files"
+        },
+        {
           "id": "j2k.completed",
           "name": "Converted Files"
         },
@@ -136,12 +140,7 @@
       "view/title": [
         {
           "command": "j2k.commitConversionSession",
-          "when": "view == j2k.queue && j2k.sessionActive",
-          "group": "navigation@3"
-        },
-        {
-          "command": "j2k.commitConversionSession",
-          "when": "view == j2k.completed && j2k.sessionActive",
+          "when": "view == j2k.accepted && j2k.sessionActive",
           "group": "navigation@3"
         }
       ]

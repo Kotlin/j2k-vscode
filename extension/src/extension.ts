@@ -10,7 +10,7 @@ import { Job, Queue } from "./batch/queue";
 import { CompletedJob, Worker } from "./batch/worker";
 import { QueueListProvider } from "./batch/queue-view";
 import { CompletedListProvider } from "./batch/completed-view";
-import { applyPatch } from "@langchain/core/utils/json_patch";
+import { AcceptedListProvider, AcceptedItem } from "./batch/accepted-view";
 
 export function logFile(filename: string, content: string) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
@@ -157,14 +157,18 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.workspace.registerTextDocumentContentProvider("j2k-result", mem),
   );
 
-  const queueProvider = new QueueListProvider(queue, worker);
-  vscode.window.registerTreeDataProvider("j2k.queue", queueProvider);
-
-  const completedProvider = new CompletedListProvider(worker);
+  const acceptedView = new AcceptedListProvider(worker);
+  const completedView = new CompletedListProvider(worker);
   const completedTree = vscode.window.createTreeView("j2k.completed", {
-    treeDataProvider: completedProvider
+    treeDataProvider: completedView,
   });
-  context.subscriptions.push(completedTree);
+  const queueProvider = new QueueListProvider(queue, worker);
+
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("j2k.accepted", acceptedView),
+    completedTree,
+    vscode.window.registerTreeDataProvider("j2k.queue", queueProvider),
+  );
 
   // this logic has been factored out so that if we want to keep going after
   // cancel action as well, then we can do this
@@ -304,7 +308,7 @@ export async function activate(context: vscode.ExtensionContext) {
       // rename the java file to .kt file extension to preserve commit
       // history, then commit
 
-      await vcsHandler.renameAndCommit(currentJavaUri, kotlinReplacement);
+      // await vcsHandler.renameAndCommit(currentJavaUri, kotlinReplacement);
 
       // write the kotlin file, then delete the old java file
       await vscode.workspace.fs.writeFile(
@@ -325,6 +329,8 @@ export async function activate(context: vscode.ExtensionContext) {
       } else {
         await vcsHandler.stageConversionReplacement(kotlinReplacement);
       }
+
+      worker.acceptCompleted(currentJavaUri, kotlinReplacement);
 
       // tidy up any changed state
       await vscode.commands.executeCommand(
@@ -470,6 +476,8 @@ export async function activate(context: vscode.ExtensionContext) {
         // nothing to do for non-vcs
 
         vscode.window.showInformationMessage(`Committed session: ${message}`);
+        
+        worker.clearAllViews(queue);
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to commit session: ${err?.message ?? String(err)}`);
         return;

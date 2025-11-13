@@ -12,6 +12,8 @@ import { QueueListProvider } from "./batch/queue-view";
 import { CompletedListProvider } from "./batch/completed-view";
 import { AcceptedListProvider, AcceptedItem } from "./batch/accepted-view";
 
+const SESSION_STORAGE_NAME = ".j2k-session.tmp";
+
 export function logFile(filename: string, content: string) {
   const workspaceFolders = vscode.workspace.workspaceFolders;
   if (workspaceFolders === undefined) {
@@ -60,6 +62,16 @@ async function normaliseSelection(input: vscode.Uri[]): Promise<vscode.Uri[]> {
   return [...new Map(out.map((u) => [normaliseFsPath(u.fsPath), u])).values()];
 }
 
+function deriveWorkspaceFolder(uri: vscode.Uri): vscode.WorkspaceFolder | undefined {
+  const folder = vscode.workspace.getWorkspaceFolder(uri);
+  if (folder) {
+    return folder;
+  }
+  
+  const all = vscode.workspace.workspaceFolders;
+  return all && all.length > 0 ? all[0] : undefined;
+}
+
 export async function activate(context: vscode.ExtensionContext) {
   // so that we don't have to discover open workspaces when accepting/rejecting,
   // we convey this state between the convert command
@@ -70,8 +82,113 @@ export async function activate(context: vscode.ExtensionContext) {
   // state required for conversion session
   let sessionActive = false;
   let sessionAcceptedFiles: vscode.Uri[] = [];
-  vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
+  let sessionWorkspaceFolder: vscode.WorkspaceFolder | undefined;
   
+  function getSessionFilePath(): string | undefined {
+    if (!sessionWorkspaceFolder) {
+      return undefined;
+    }
+    
+    return path.join(sessionWorkspaceFolder.uri.fsPath, SESSION_STORAGE_NAME);
+  }
+  
+  function deleteSessionFile() {
+    const sessionFilePath = getSessionFilePath();
+    if (!sessionFilePath) {
+      return;
+    }
+
+    try {
+      if (fs.existsSync(sessionFilePath)) {
+        fs.unlinkSync(sessionFilePath);
+      }
+    } catch {
+      // no-op
+    }
+  }
+
+  function persistSessionState() {
+    const sessionFilePath = getSessionFilePath();
+    if (!sessionFilePath) {
+      return;
+    }
+
+    if (!sessionActive) {
+      // when the session isn't active, the file must not exist
+      deleteSessionFile();
+      return;
+    }
+
+    const payload = {
+      accepted: sessionAcceptedFiles.map((uri) => uri.fsPath),
+    };
+
+    try {
+      fs.writeFileSync(
+        sessionFilePath,
+        JSON.stringify(payload, null, 2),
+        "utf8",
+      );
+    } catch {
+      // no-op
+    }
+  }
+
+  function loadSessionStateFromDisk() {
+    const folders = vscode.workspace.workspaceFolders;
+    if (!folders || folders.length === 0) {
+      return;
+    }
+
+    for (const folder of folders) {
+      const sessionFilePath = path.join(folder.uri.fsPath, SESSION_STORAGE_NAME);
+      if (!fs.existsSync(sessionFilePath)) {
+        continue;
+      }
+
+      try {
+        const content = fs.readFileSync(sessionFilePath, "utf8");
+        const parsed = JSON.parse(content) as {
+          accepted?: string[];
+        };
+
+        if (!parsed || !Array.isArray(parsed.accepted)) {
+          fs.unlinkSync(sessionFilePath);
+          continue;
+        }
+
+        const uris: vscode.Uri[] = [];
+        for (const p of parsed.accepted) {
+          if (typeof p !== "string") {
+            continue;
+          }
+          if (!fs.existsSync(p)) {
+            continue;
+          }
+          uris.push(vscode.Uri.file(p));
+        }
+
+        if (uris.length === 0) {
+          // nothing to resume – remove the file
+          fs.unlinkSync(sessionFilePath);
+          continue;
+        }
+
+        sessionActive = true;
+        sessionAcceptedFiles = uris;
+        sessionWorkspaceFolder = folder;
+
+        break;
+      } catch {
+        // corrupt or unreadable, best effort clean up
+        try {
+          fs.unlinkSync(sessionFilePath);
+        } catch {}
+      }
+    }
+  }
+  loadSessionStateFromDisk();
+  vscode.commands.executeCommand("setContext", "j2k.sessionActive", sessionActive);
 
   function sessionBeginIfRequired() {
     if (sessionActive) {
@@ -80,6 +197,7 @@ export async function activate(context: vscode.ExtensionContext) {
     
     sessionActive = true;
     sessionAcceptedFiles = [];
+    sessionWorkspaceFolder = undefined;
     vscode.commands.executeCommand("setContext", "j2k.sessionActive", true);
   }
   
@@ -322,7 +440,16 @@ export async function activate(context: vscode.ExtensionContext) {
       logFile(logFileName, replacementCode);
 
       if (sessionActive) {
+        if (!sessionWorkspaceFolder) {
+          sessionWorkspaceFolder =
+            deriveWorkspaceFolder(kotlinReplacement);
+        }
+
         sessionAcceptedFiles.push(kotlinReplacement);
+        
+        // sync saved state
+        persistSessionState();
+
         if (typeof vcsHandler.stageWithoutCommit === "function") {
           await vcsHandler.stageWithoutCommit(kotlinReplacement);
         }
@@ -486,6 +613,9 @@ export async function activate(context: vscode.ExtensionContext) {
         sessionActive = false;
         sessionAcceptedFiles = [];
         vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
+        
+        deleteSessionFile();
+        sessionWorkspaceFolder = undefined;
       }
     })
   );

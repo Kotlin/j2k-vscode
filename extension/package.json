@@ -59,8 +59,18 @@
         "category": "J2K"
       },
       {
+        "command": "j2k.rejectConversionSession",
+        "title": "Reject Conversion Session",
+        "category": "J2K"
+      },
+      {
         "command": "j2k.commitSessionFromToolbar",
         "title": "Commit Session",
+        "category": "J2K"
+      },
+      {
+        "command": "j2k.rejectSessionFromToolbar",
+        "title": "Reject Session",
         "category": "J2K"
       },
       {
@@ -133,15 +143,24 @@
           "when": "false"
         },
         {
+          "command": "j2k.rejectSessionFromToolbar",
+          "when": "false"
+        },
+        {
           "command": "j2k.configureKotlin",
           "when": "workspaceFolderCount != 0"
         }
       ],
       "view/title": [
         {
-          "command": "j2k.commitConversionSession",
+          "command": "j2k.commitSessionFromToolbar",
           "when": "view == j2k.accepted && j2k.sessionActive",
           "group": "navigation@3"
+        },
+        {
+          "command": "j2k.rejectSessionFromToolbar",
+          "when": "view == j2k.accepted && j2k.sessionActive",
+          "group": "navigation@4"
         }
       ]
     },

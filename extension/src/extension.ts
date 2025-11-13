@@ -72,6 +72,30 @@ function deriveWorkspaceFolder(uri: vscode.Uri): vscode.WorkspaceFolder | undefi
   return all && all.length > 0 ? all[0] : undefined;
 }
 
+async function restoreOriginalFromBackup(kotlinUri: vscode.Uri) {
+  const kotlinPath = kotlinUri.fsPath;
+  const dir = path.dirname(kotlinPath);
+  const base = path.basename(kotlinPath, ".kt");
+
+  const javaPath = path.join(dir, base + ".java");
+  const javaBackupPath = javaPath + ".j2k";
+
+  const javaUri = vscode.Uri.file(javaPath);
+  const javaBackupUri = vscode.Uri.file(javaBackupPath);
+
+  // delete the generated kotlin file, if it exists
+  try {
+    await vscode.workspace.fs.stat(kotlinUri);
+    await vscode.workspace.fs.delete(kotlinUri, { recursive: false, useTrash: false });
+  } catch { }
+
+  // restore backup if present
+  try {
+    await vscode.workspace.fs.stat(javaBackupUri);
+    await vscode.workspace.fs.rename(javaBackupUri, javaUri, { overwrite: true });
+  } catch { }
+}
+
 export async function activate(context: vscode.ExtensionContext) {
   // so that we don't have to discover open workspaces when accepting/rejecting,
   // we convey this state between the convert command
@@ -426,12 +450,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
       const kotlinReplacement = vscode.Uri.file(newPath);
 
-      // rename the java file to .kt file extension to preserve commit
-      // history, then commit
+      // backup original java file as .java.j2k
+      const javaBackupPath = oldPath + ".j2k"; // Foo.java -> Foo.java.j2k
+      const javaBackupUri = vscode.Uri.file(javaBackupPath);
 
-      // await vcsHandler.renameAndCommit(currentJavaUri, kotlinReplacement);
+      // move the java file out of the way
+      try {
+        await vscode.workspace.fs.rename(currentJavaUri, javaBackupUri, { overwrite: true });
+      } catch (err) {
+        vscode.window.showErrorMessage(
+          `Failed to backup original Java file for ${path.basename(oldPath)}: ${String(err)}`,
+        );
+        return;
+      }
 
-      // write the kotlin file, then delete the old java file
+      // write the kotlin file
       await vscode.workspace.fs.writeFile(
         kotlinReplacement,
         Buffer.from(replacementCode, "utf-8"),
@@ -452,10 +485,6 @@ export async function activate(context: vscode.ExtensionContext) {
         
         // sync saved state
         persistSessionState();
-
-        if (typeof vcsHandler.stageWithoutCommit === "function") {
-          await vcsHandler.stageWithoutCommit(kotlinReplacement);
-        }
       } else {
         await vcsHandler.stageConversionReplacement(kotlinReplacement);
       }
@@ -524,6 +553,9 @@ export async function activate(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand("j2k.commitSessionFromToolbar", () =>
       vscode.commands.executeCommand("j2k.commitConversionSession"),
+    ),
+    vscode.commands.registerCommand("j2k.rejectSessionFromToolbar", () =>
+      vscode.commands.executeCommand("j2k.rejectConversionSession"),
     ),
   );
 
@@ -608,6 +640,22 @@ export async function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(`Committed session: ${message}`);
         
         worker.clearAllViews(queue);
+
+        for (const kotlinUri of sessionAcceptedFiles) {
+          const kotlinPath = kotlinUri.fsPath;
+          const dir = path.dirname(kotlinPath);
+          const base = path.basename(kotlinPath, ".kt");
+
+          const javaPath = path.join(dir, base + ".java");
+          const javaBackupPath = javaPath + ".j2k";
+          const javaBackupUri = vscode.Uri.file(javaBackupPath);
+
+          try {
+            await vscode.workspace.fs.delete(javaBackupUri, { recursive: false, useTrash: false });
+          } catch {
+            // if it doesn't exist, fine
+          }
+        }
       } catch (err: any) {
         vscode.window.showErrorMessage(`Failed to commit session: ${err?.message ?? String(err)}`);
         return;
@@ -621,6 +669,48 @@ export async function activate(context: vscode.ExtensionContext) {
         sessionWorkspaceFolder = undefined;
       }
     })
+  );
+  
+  context.subscriptions.push(
+    vscode.commands.registerCommand("j2k.rejectConversionSession", async () => {
+      if (!sessionActive) {
+        vscode.window.showErrorMessage("No active conversion session.");
+        return;
+      }
+
+      const confirm = await vscode.window.showWarningMessage(
+        `This will discard Kotlin conversions for ${sessionAcceptedFiles.length} files and restore the original Java files.`,
+        { modal: true },
+        "Discard session",
+        "Cancel",
+      );
+
+      if (confirm !== "Discard session") {
+        return;
+      }
+
+      try {
+        for (const kotlinUri of sessionAcceptedFiles) {
+          await restoreOriginalFromBackup(kotlinUri);
+        }
+
+        worker.clearAllViews(queue);
+
+        vscode.window.showInformationMessage("Conversion session discarded and files restored.");
+      } catch (err: any) {
+        vscode.window.showErrorMessage(
+          `Failed to discard session: ${err?.message ?? String(err)}`,
+        );
+        return;
+      } finally {
+        sessionActive = false;
+        sessionAcceptedFiles = [];
+        vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
+
+        deleteSessionFile();
+        sessionWorkspaceFolder = undefined;
+      }
+    }),
   );
 }
 

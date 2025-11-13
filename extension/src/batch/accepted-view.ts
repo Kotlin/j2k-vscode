@@ -31,10 +31,12 @@ export class AcceptedListProvider implements vscode.TreeDataProvider<AcceptedIte
     const item = new vscode.TreeItem(acceptedItem.label);
 
     item.iconPath = vscode.ThemeIcon.File;
+    item.resourceUri = acceptedItem.uri;
+
     item.command = {
-      command: "j2k.accepted.openFile",
+      command: "vscode.open",
       title: "Open File",
-      arguments: [item],
+      arguments: [acceptedItem.uri],
     };
     
     return item;

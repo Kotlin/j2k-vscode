@@ -267,6 +267,9 @@ export async function activate(context: vscode.ExtensionContext) {
   const mem = new MemoryContentProvider();
   const worker = new Worker(context, queue, mem, outputChannel);
   worker.start();
+  if (sessionActive && sessionAcceptedFiles.length > 0) {
+    worker.restoreAccepted(sessionAcceptedFiles);
+  }
 
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem),

@@ -166,4 +166,9 @@ export class Worker {
       );
     }
   }
+  
+  restoreAccepted(uris: vscode.Uri[]) {
+    this.accepted = uris.map((uri) => ({ uri }));
+    this.onChange.fire();
+  }
 }

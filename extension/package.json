@@ -34,6 +34,10 @@
     "views": {
       "j2k": [
         {
+          "id": "j2k.accepted",
+          "name": "Accepted Files"
+        },
+        {
           "id": "j2k.completed",
           "name": "Converted Files"
         },
@@ -44,6 +48,31 @@
       ]
     },
     "commands": [
+      {
+        "command": "j2k.startConversionSession",
+        "title": "Start Conversion Session",
+        "category": "J2K"
+      },
+      {
+        "command": "j2k.commitConversionSession",
+        "title": "Commit Conversion Session",
+        "category": "J2K"
+      },
+      {
+        "command": "j2k.rejectConversionSession",
+        "title": "Reject Conversion Session",
+        "category": "J2K"
+      },
+      {
+        "command": "j2k.commitSessionFromToolbar",
+        "title": "Commit Session",
+        "category": "J2K"
+      },
+      {
+        "command": "j2k.rejectSessionFromToolbar",
+        "title": "Reject Session",
+        "category": "J2K"
+      },
       {
         "command": "j2k.queueFile",
         "title": "Convert to Kotlin",
@@ -110,8 +139,28 @@
           "when": "false"
         },
         {
+          "command": "j2k.commitSessionFromToolbar",
+          "when": "false"
+        },
+        {
+          "command": "j2k.rejectSessionFromToolbar",
+          "when": "false"
+        },
+        {
           "command": "j2k.configureKotlin",
           "when": "workspaceFolderCount != 0"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "j2k.commitSessionFromToolbar",
+          "when": "view == j2k.accepted && j2k.sessionActive",
+          "group": "navigation@3"
+        },
+        {
+          "command": "j2k.rejectSessionFromToolbar",
+          "when": "view == j2k.accepted && j2k.sessionActive",
+          "group": "navigation@4"
         }
       ]
     },

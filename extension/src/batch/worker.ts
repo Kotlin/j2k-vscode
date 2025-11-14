@@ -26,6 +26,7 @@ export class Worker {
   private busy = false;
   current?: Job;
   completed: CompletedJob[] = [];
+  accepted: { uri: vscode.Uri }[] = [];
   private onChange = new vscode.EventEmitter<void>();
   readonly onDidChange = this.onChange.event;
 
@@ -89,6 +90,10 @@ export class Worker {
         },
       );
 
+      if (this.current !== job) {
+        return;
+      }
+
       const resultUri = vscode.Uri.parse(
         `j2k-result:${job.javaUri.fsPath.replace(/\.java$/i, ".kt")}`,
       );
@@ -126,6 +131,25 @@ export class Worker {
       this.maybeStart();
     }
   }
+  
+  acceptCompleted(javaUri: vscode.Uri, kotlinUri: vscode.Uri) {
+    const completedIdx = this.completed.findIndex(completedJob => completedJob.job.javaUri.fsPath === javaUri.fsPath);
+    if (completedIdx >= 0) {
+      // remove from completed
+      this.completed.splice(completedIdx, 1);
+    }
+
+    this.accepted.push({uri: kotlinUri});
+    this.onChange.fire();
+  }
+
+  clearAllViews(queue: Queue) {
+    queue.clear();
+    this.completed = [];
+    this.accepted = [];
+    this.current = undefined;
+    this.onChange.fire();
+  }
 
   removeCompleted(result: vscode.Uri) {
     const i = this.completed.findIndex(
@@ -141,5 +165,10 @@ export class Worker {
         `Worker: Removed completed file ${path.basename(result.fsPath)}`,
       );
     }
+  }
+  
+  restoreAccepted(uris: vscode.Uri[]) {
+    this.accepted = uris.map((uri) => ({ uri }));
+    this.onChange.fire();
   }
 }

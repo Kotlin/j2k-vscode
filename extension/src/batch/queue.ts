@@ -43,4 +43,8 @@ export class Queue {
   toArray(): ReadonlyArray<Job> {
     return this.queued;
   }
+
+  clear() {
+    this.queued = [];
+  }
 }

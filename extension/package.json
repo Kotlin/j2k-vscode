@@ -2,7 +2,7 @@
   "name": "j2k-vscode",
   "displayName": "j2k-vscode",
   "description": "A VS Code extension that provides a polished user experience for converting Java files to Kotlin with manual review capabilities.",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "repository": {
     "type": "git",
     "url": "https://github.com/Kotlin/j2k-vscode.git"

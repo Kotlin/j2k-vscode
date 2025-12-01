@@ -6,12 +6,12 @@ import * as fs from "fs";
 import { detectVCS, VCSFileRenamer } from "./vcs";
 import { Job } from "./batch/queue";
 import { CompletedJob } from "./batch/worker";
-import { AcceptedItem } from "./batch/accepted-view";
 import { logFile } from "./helpers/logging";
 import { normaliseSelection, deriveWorkspaceFolder, restoreOriginalFromBackup } from "./helpers/fs";
 import { initialiseBuildSystems, configureKotlinForBuildSystems } from "./helpers/build-systems";
 import { ConversionSession, createBatchController } from "./helpers/batch";
 import { createSessionManager } from "./helpers/session";
+import { registerSessionCommands } from "./helpers/session-commands";
 
 const SESSION_STORAGE_NAME = ".j2k-session.tmp";
 
@@ -342,88 +342,16 @@ export async function activate(context: vscode.ExtensionContext) {
     await configureKotlinForBuildSystems(outputChannel);
   });
 
-  registerCommand("j2k.commitConversionSession", async () => {
-    if (!session.active) {
-      vscode.window.showErrorMessage("No active conversion session.");
-      return;
+  registerSessionCommands(
+    context,
+    {
+      session,
+      worker,
+      queue,
+      outputChannel,
+      sessionManager,
     }
-    
-    const suggestedText = `Convert ${session.acceptedFiles.length} files to Kotlin`;
-    const name = await vscode.window.showInputBox({
-      prompt: "Give this coversion session a name (optional)",
-      placeHolder: suggestedText
-    });
-
-    const message = name && name.trim().length > 0 ? name!.trim() : suggestedText;
-
-    try {
-      const vcsHandler = await detectVCS(outputChannel);
-      if (typeof vcsHandler.commitAll === "function") {
-        await vcsHandler.commitAll(session.acceptedFiles, message);
-      }
-      // nothing to do for non-vcs
-
-      vscode.window.showInformationMessage(`Committed session: ${message}`);
-      
-      worker.clearAllViews(queue);
-
-      for (const kotlinUri of session.acceptedFiles) {
-        const kotlinPath = kotlinUri.fsPath;
-        const dir = path.dirname(kotlinPath);
-        const base = path.basename(kotlinPath, ".kt");
-
-        const javaPath = path.join(dir, base + ".java");
-        const javaBackupPath = javaPath + ".j2k";
-        const javaBackupUri = vscode.Uri.file(javaBackupPath);
-
-        try {
-          await vscode.workspace.fs.delete(javaBackupUri, { recursive: false, useTrash: false });
-        } catch {
-          // if it doesn't exist, fine
-        }
-      }
-    } catch (err: any) {
-      vscode.window.showErrorMessage(`Failed to commit session: ${err?.message ?? String(err)}`);
-      return;
-    } finally {
-      sessionManager.reset();
-    }
-  });
-  
-  registerCommand("j2k.rejectConversionSession", async () => {
-    if (!session.active) {
-      vscode.window.showErrorMessage("No active conversion session.");
-      return;
-    }
-
-    const confirm = await vscode.window.showWarningMessage(
-      `This will discard Kotlin conversions for ${session.acceptedFiles.length} files and restore the original Java files.`,
-      { modal: true },
-      "Discard session",
-      "Cancel",
-    );
-
-    if (confirm !== "Discard session") {
-      return;
-    }
-
-    try {
-      for (const kotlinUri of session.acceptedFiles) {
-        await restoreOriginalFromBackup(kotlinUri);
-      }
-
-      worker.clearAllViews(queue);
-
-      vscode.window.showInformationMessage("Conversion session discarded and files restored.");
-    } catch (err: any) {
-      vscode.window.showErrorMessage(
-        `Failed to discard session: ${err?.message ?? String(err)}`,
-      );
-      return;
-    } finally {
-      sessionManager.reset();
-    }
-  });
+  );
 }
 
 // This method is called when your extension is deactivated

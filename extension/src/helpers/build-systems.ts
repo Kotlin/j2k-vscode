@@ -20,7 +20,7 @@ export async function initialiseBuildSystems(
       );
       vscode.window
         .showInformationMessage(
-          `Kotlin is not configured for ${system.name}.`,
+          `This ${system.name} project currently builds only Java. Would you like to add Kotlin support?`,
           "Add Kotlin",
           "Not now",
         )

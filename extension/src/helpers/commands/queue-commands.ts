@@ -36,8 +36,8 @@ export function registerQueueCommands(
       const selected = resources?.length
         ? resources
         : resource
-        ? [resource]
-        : [];
+          ? [resource]
+          : [];
 
       const javaUris = await normaliseSelection(selected);
 
@@ -46,8 +46,7 @@ export function registerQueueCommands(
           .toArray()
           .some((item) => item.javaUri.fsPath === uri.fsPath);
         const running =
-          worker.current &&
-          worker.current.javaUri.fsPath === uri.fsPath;
+          worker.current && worker.current.javaUri.fsPath === uri.fsPath;
 
         if (queued || running) {
           outputChannel.appendLine(
@@ -71,19 +70,16 @@ export function registerQueueCommands(
     },
   );
 
-  registerCommand(
-    "j2k.queue.openProgress",
-    async (job: Job) => {
-      let document = await vscode.workspace.openTextDocument(job.progressUri);
+  registerCommand("j2k.queue.openProgress", async (job: Job) => {
+    let document = await vscode.workspace.openTextDocument(job.progressUri);
 
-      if (document.languageId !== "kotlin") {
-        document = await vscode.languages.setTextDocumentLanguage(
-          document,
-          "kotlin",
-        );
-      }
+    if (document.languageId !== "kotlin") {
+      document = await vscode.languages.setTextDocumentLanguage(
+        document,
+        "kotlin",
+      );
+    }
 
-      await vscode.window.showTextDocument(document, { preview: true });
-    },
-  );
+    await vscode.window.showTextDocument(document, { preview: true });
+  });
 }

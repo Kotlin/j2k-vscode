@@ -55,8 +55,7 @@ export function registerConversionCommands(
 
     const onRight =
       typeof kotlinUri !== "undefined" && uri === kotlinUri.toString();
-    const onLeft =
-      typeof javaUri !== "undefined" && uri === javaUri.toString();
+    const onLeft = typeof javaUri !== "undefined" && uri === javaUri.toString();
 
     return onLeft || onRight;
   }
@@ -110,10 +109,7 @@ export function registerConversionCommands(
 
       if (!right) {
         right = await vscode.workspace.openTextDocument(rightUri);
-        right = await vscode.languages.setTextDocumentLanguage(
-          right,
-          "kotlin",
-        );
+        right = await vscode.languages.setTextDocumentLanguage(right, "kotlin");
 
         // provide actual text
         const edit = new vscode.WorkspaceEdit();
@@ -232,9 +228,7 @@ export function registerConversionCommands(
 
     if (currentJavaUri) {
       vscode.window.showInformationMessage(
-        `Conversion cancelled for ${path.basename(
-          currentJavaUri.fsPath,
-        )}`,
+        `Conversion cancelled for ${path.basename(currentJavaUri.fsPath)}`,
       );
     }
   });

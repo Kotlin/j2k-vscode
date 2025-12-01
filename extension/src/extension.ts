@@ -10,7 +10,10 @@ import { registerConversionCommands } from "./helpers/commands/conversion-comman
 import { registerConfigCommands } from "./helpers/commands/config-commands";
 
 export async function activate(context: vscode.ExtensionContext) {
-  const registerCommand = (command: string, callback: (...args: any[]) => any | Promise<any>,): vscode.Disposable => {
+  const registerCommand = (
+    command: string,
+    callback: (...args: any[]) => any | Promise<any>,
+  ): vscode.Disposable => {
     const disposable = vscode.commands.registerCommand(command, callback);
 
     context.subscriptions.push(disposable);
@@ -20,9 +23,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   const registerBindings = (commands: Map<string, string>) => {
     for (const [key, value] of commands) {
-      registerCommand(key, () =>
-        vscode.commands.executeCommand(value),
-      );
+      registerCommand(key, () => vscode.commands.executeCommand(value));
     }
   };
 
@@ -35,7 +36,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const sessionManager = createSessionManager(session);
   // just in case we have a previous session that existed
   sessionManager.loadFromDisk();
-  
+
   registerCommand("j2k.startConversionSession", () => {
     sessionManager.beginIfRequired();
     vscode.window.showInformationMessage("J2K: Conversion session started.");
@@ -50,65 +51,49 @@ export async function activate(context: vscode.ExtensionContext) {
 
   await initialiseBuildSystems(outputChannel);
 
-  const {
+  const { queue, mem, worker, acceptedView, completedTree, queueProvider } =
+    createBatchController(context, outputChannel, session);
+
+  registerQueueCommands(context, {
     queue,
-    mem,
     worker,
-    acceptedView,
+    outputChannel,
+    sessionManager,
+  });
+
+  registerConversionCommands(context, {
+    session,
+    worker,
+    queue,
     completedTree,
-    queueProvider
-  } = createBatchController(context, outputChannel, session);
+    outputChannel,
+    sessionManager,
+  });
 
-  registerQueueCommands(
-    context,
-    {
-      queue,
-      worker,
-      outputChannel,
-      sessionManager
-    }
-  );
+  registerConfigCommands(context, {
+    outputChannel,
+  });
 
-  registerConversionCommands(
-    context,
-    {
-      session,
-      worker,
-      queue,
-      completedTree,
-      outputChannel,
-      sessionManager,
-    }
-  );
-
-  registerConfigCommands(
-    context,
-    {
-      outputChannel,
-    }
-  );
-
-  registerSessionCommands(
-    context,
-    {
-      session,
-      worker,
-      queue,
-      outputChannel,
-      sessionManager,
-    }
-  );
+  registerSessionCommands(context, {
+    session,
+    worker,
+    queue,
+    outputChannel,
+    sessionManager,
+  });
 
   // to register bigger, bolder commands from editor/title,
   // the toolbar automatically detects keybinds to render below
   // the title. therefore we create aliases which do not have
   // keybinds
-  registerBindings(new Map<string, string>([
-    ["j2k.acceptFromToolbar", "j2k.acceptAndReplaceConversion"],
-    ["j2k.cancelFromToolbar", "j2k.cancelConversion"],
-    ["j2k.commitSessionFromToolbar", "j2k.commitConversionSession"],
-    ["j2k.rejectSessionFromToolbar", "j2k.rejectConversionSession"],
-  ]));
+  registerBindings(
+    new Map<string, string>([
+      ["j2k.acceptFromToolbar", "j2k.acceptAndReplaceConversion"],
+      ["j2k.cancelFromToolbar", "j2k.cancelConversion"],
+      ["j2k.commitSessionFromToolbar", "j2k.commitConversionSession"],
+      ["j2k.rejectSessionFromToolbar", "j2k.rejectConversionSession"],
+    ]),
+  );
 }
 
 // This method is called when your extension is deactivated

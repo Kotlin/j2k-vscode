@@ -82,7 +82,10 @@ export function createSessionManager(
     session.workspaceFolder = undefined;
 
     for (const folder of folders) {
-      const sessionFilePath = path.join(folder.uri.fsPath, SESSION_STORAGE_NAME);
+      const sessionFilePath = path.join(
+        folder.uri.fsPath,
+        SESSION_STORAGE_NAME,
+      );
       if (!fs.existsSync(sessionFilePath)) {
         continue;
       }

@@ -131,15 +131,17 @@ export class Worker {
       this.maybeStart();
     }
   }
-  
+
   acceptCompleted(javaUri: vscode.Uri, kotlinUri: vscode.Uri) {
-    const completedIdx = this.completed.findIndex(completedJob => completedJob.job.javaUri.fsPath === javaUri.fsPath);
+    const completedIdx = this.completed.findIndex(
+      (completedJob) => completedJob.job.javaUri.fsPath === javaUri.fsPath,
+    );
     if (completedIdx >= 0) {
       // remove from completed
       this.completed.splice(completedIdx, 1);
     }
 
-    this.accepted.push({uri: kotlinUri});
+    this.accepted.push({ uri: kotlinUri });
     this.onChange.fire();
   }
 
@@ -166,7 +168,7 @@ export class Worker {
       );
     }
   }
-  
+
   restoreAccepted(uris: vscode.Uri[]) {
     this.accepted = uris.map((uri) => ({ uri }));
     this.onChange.fire();

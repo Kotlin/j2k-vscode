@@ -29,9 +29,7 @@ export function registerConfigCommands(
         "LLM API key saved to VS Code secure storage.",
       );
 
-      outputChannel.appendLine(
-        "LLM API key saved to VS Code secure storage.",
-      );
+      outputChannel.appendLine("LLM API key saved to VS Code secure storage.");
     }
   });
 

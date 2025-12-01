@@ -4,7 +4,7 @@ import * as path from "path";
 import * as fs from "fs";
 
 import { detectVCS, VCSFileRenamer } from "./vcs";
-import { detectBuildSystems } from "./build-systems";
+import { detectBuildSystems, JVMBuildSystem } from "./build-systems";
 import { MemoryContentProvider } from "./batch/memory";
 import { Job, Queue } from "./batch/queue";
 import { CompletedJob, Worker } from "./batch/worker";
@@ -100,6 +100,122 @@ async function restoreOriginalFromBackup(kotlinUri: vscode.Uri) {
     await vscode.workspace.fs.stat(javaBackupUri);
     await vscode.workspace.fs.rename(javaBackupUri, javaUri, { overwrite: true });
   } catch { }
+}
+
+async function initialiseBuildSystems(
+  outputChannel: vscode.OutputChannel,
+): Promise<JVMBuildSystem[]> {
+  const buildSystems = await detectBuildSystems();
+  outputChannel.appendLine(
+    `Detected build systems: ${buildSystems.map((s) => s.name).join(", ")}`,
+  );
+
+  for (const system of buildSystems) {
+    if (system.name === "none") {
+      continue;
+    }
+
+    if (await system.needsKotlin()) {
+      outputChannel.appendLine(
+        `Build system ${system.name} requires Kotlin to be configured.`,
+      );
+
+      vscode.window
+        .showInformationMessage(
+          `This ${system.name} project currently builds only Java. Would you like to add Kotlin support?`,
+          "Add Kotlin",
+          "Not now",
+        )
+        .then(async (choice) => {
+          if (choice !== "Add Kotlin") {
+            return;
+          }
+
+          outputChannel.appendLine(
+            `Configuring Kotlin from prompt for ${system.name}`,
+          );
+          await system.enableKotlin();
+        });
+    }
+  }
+
+  return buildSystems;
+}
+
+async function configureKotlinForBuildSystems(
+  outputChannel: vscode.OutputChannel,
+): Promise<void> {
+  outputChannel.appendLine("Manual trigger: Configuring Kotlin");
+
+  const systems = await detectBuildSystems();
+
+  const actionable = systems.filter((s) => s.name !== "none");
+  if (actionable.length === 0) {
+    outputChannel.appendLine("No supported build system detected.");
+    return;
+  }
+
+  for (const system of actionable) {
+    try {
+      outputChannel.appendLine(`Checking Kotlin setup for ${system.name}…`);
+      if (await system.needsKotlin()) {
+        outputChannel.appendLine(`Enabling Kotlin for ${system.name}…`);
+        await system.enableKotlin();
+        outputChannel.appendLine(`Kotlin configured for ${system.name}.`);
+      } else {
+        outputChannel.appendLine(
+          `Kotlin already configured for ${system.name}.`,
+        );
+      }
+    } catch (err: any) {
+      outputChannel.appendLine(
+        `Failed to configure Kotlin for ${system.name}: ${err?.message ?? String(err)}`,
+      );
+    }
+  }
+}
+
+async function createBatchController(
+  context: vscode.ExtensionContext,
+  outputChannel: vscode.OutputChannel,
+  session: ConversionSession,
+) {
+  const queue = new Queue();
+  const mem = new MemoryContentProvider();
+  const worker = new Worker(context, queue, mem, outputChannel);
+  worker.start();
+  if (session.active && session.acceptedFiles.length > 0) {
+    worker.restoreAccepted(session.acceptedFiles);
+  }
+
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem),
+  );
+  context.subscriptions.push(
+    vscode.workspace.registerTextDocumentContentProvider("j2k-result", mem),
+  );
+
+  const acceptedView = new AcceptedListProvider(worker);
+  const completedView = new CompletedListProvider(worker);
+  const completedTree = vscode.window.createTreeView("j2k.completed", {
+    treeDataProvider: completedView,
+  });
+  const queueProvider = new QueueListProvider(queue, worker);
+
+  context.subscriptions.push(
+    vscode.window.registerTreeDataProvider("j2k.accepted", acceptedView),
+    completedTree,
+    vscode.window.registerTreeDataProvider("j2k.queue", queueProvider),
+  );
+
+  return {
+    queue,
+    mem,
+    worker,
+    acceptedView,
+    completedTree,
+    queueProvider
+  };
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -274,67 +390,16 @@ export async function activate(context: vscode.ExtensionContext) {
   // to preserve VC history, lazy load vcsHandler
   let vcsHandler: VCSFileRenamer;
 
-  const buildSystems = await detectBuildSystems();
-  outputChannel.appendLine(
-    `Detected build systems: ${buildSystems.map((s) => s.name).join(", ")}`,
-  );
+  await initialiseBuildSystems(outputChannel);
 
-  for (const system of buildSystems) {
-    if (system.name === "none") {
-      continue;
-    }
-
-    if (await system.needsKotlin()) {
-      outputChannel.appendLine(
-        `Build system ${system.name} requires Kotlin to be configured.`,
-      );
-
-      vscode.window
-        .showInformationMessage(
-          `This ${system.name} project currently builds only Java. Would you like to add Kotlin support?`,
-          "Add Kotlin",
-          "Not now",
-        )
-        .then(async (choice) => {
-          if (choice !== "Add Kotlin") {
-            return;
-          }
-
-          outputChannel.appendLine(
-            `Configuring Kotlin from prompt for ${system.name}`,
-          );
-          await system.enableKotlin();
-        });
-    }
-  }
-
-  const queue = new Queue();
-  const mem = new MemoryContentProvider();
-  const worker = new Worker(context, queue, mem, outputChannel);
-  worker.start();
-  if (session.active && session.acceptedFiles.length > 0) {
-    worker.restoreAccepted(session.acceptedFiles);
-  }
-
-  context.subscriptions.push(
-    vscode.workspace.registerTextDocumentContentProvider("j2k-progress", mem),
-  );
-  context.subscriptions.push(
-    vscode.workspace.registerTextDocumentContentProvider("j2k-result", mem),
-  );
-
-  const acceptedView = new AcceptedListProvider(worker);
-  const completedView = new CompletedListProvider(worker);
-  const completedTree = vscode.window.createTreeView("j2k.completed", {
-    treeDataProvider: completedView,
-  });
-  const queueProvider = new QueueListProvider(queue, worker);
-
-  context.subscriptions.push(
-    vscode.window.registerTreeDataProvider("j2k.accepted", acceptedView),
+  const {
+    queue,
+    mem,
+    worker,
+    acceptedView,
     completedTree,
-    vscode.window.registerTreeDataProvider("j2k.queue", queueProvider),
-  );
+    queueProvider
+  } = await createBatchController(context, outputChannel, session);
 
   // this logic has been factored out so that if we want to keep going after
   // cancel action as well, then we can do this
@@ -588,36 +653,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // bind the enable kotlin function to a command
   registerCommand("j2k.configureKotlin", async () => {
-    outputChannel.appendLine("Manual trigger: Configuring Kotlin");
+    await configureKotlinForBuildSystems(outputChannel);
+  });
 
-    const systems = await detectBuildSystems();
-
-    const actionable = systems.filter((s) => s.name !== "none");
-    if (actionable.length === 0) {
-      outputChannel.appendLine("No supported build system detected.");
-      return;
-    }
-
-    for (const system of actionable) {
-      try {
-        outputChannel.appendLine(`Checking Kotlin setup for ${system.name}…`);
-        if (await system.needsKotlin()) {
-          outputChannel.appendLine(`Enabling Kotlin for ${system.name}…`);
-          await system.enableKotlin();
-          outputChannel.appendLine(`Kotlin configured for ${system.name}.`);
-        } else {
-          outputChannel.appendLine(
-            `Kotlin already configured for ${system.name}.`,
-          );
-        }
-      } catch (err: any) {
-        outputChannel.appendLine(
-          `Failed to configure Kotlin for ${system.name}: ${err?.message ?? String(err)}`,
-        );
-      }
-    }
-  }),
-  
   registerCommand("j2k.commitConversionSession", async () => {
     if (!session.active) {
       vscode.window.showErrorMessage("No active conversion session.");

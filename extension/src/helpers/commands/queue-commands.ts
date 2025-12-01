@@ -1,8 +1,8 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { Queue, Job } from "../batch/queue";
-import { Worker } from "../batch/worker";
-import { normaliseSelection } from "../helpers/fs";
+import { Queue, Job } from "../../batch/queue";
+import { Worker } from "../../batch/worker";
+import { normaliseSelection } from "../fs";
 
 type SessionManager = {
   beginIfRequired(): void;

@@ -1,13 +1,13 @@
 import * as vscode from "vscode";
 import * as assert from "assert";
 import * as path from "path";
-import { detectVCS, VCSFileRenamer } from "../vcs";
-import { CompletedJob, Worker } from "../batch/worker";
-import { Queue } from "../batch/queue";
-import { AcceptedItem } from "../batch/accepted-view";
-import { ConversionSession } from "../helpers/batch";
-import { logFile } from "../helpers/logging";
-import { deriveWorkspaceFolder } from "../helpers/fs";
+import { detectVCS, VCSFileRenamer } from "../../vcs";
+import { CompletedJob, Worker } from "../../batch/worker";
+import { Queue } from "../../batch/queue";
+import { AcceptedItem } from "../../batch/accepted-view";
+import { ConversionSession } from "../batch";
+import { logFile } from "../logging";
+import { deriveWorkspaceFolder } from "../fs";
 
 type SessionManager = {
   persist(): void;

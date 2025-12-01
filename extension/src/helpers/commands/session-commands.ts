@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import { detectVCS } from "../vcs";
-import { ConversionSession } from "../helpers/batch";
-import { restoreOriginalFromBackup } from "../helpers/fs";
-import { Queue } from "../batch/queue";
-import { Worker } from "../batch/worker";
+import { detectVCS } from "../../vcs";
+import { ConversionSession } from "../batch";
+import { restoreOriginalFromBackup } from "../fs";
+import { Queue } from "../../batch/queue";
+import { Worker } from "../../batch/worker";
 
 type SessionManager = {
   reset(): void;

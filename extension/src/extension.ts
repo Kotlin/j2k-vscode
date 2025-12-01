@@ -4,10 +4,10 @@ import { VCSFileRenamer } from "./vcs";
 import { initialiseBuildSystems } from "./helpers/build-systems";
 import { ConversionSession, createBatchController } from "./helpers/batch";
 import { createSessionManager } from "./helpers/session";
-import { registerSessionCommands } from "./helpers/session-commands";
-import { registerQueueCommands } from "./helpers/queue-commands";
-import { registerConversionCommands } from "./helpers/conversion-commands";
-import { registerConfigCommands } from "./helpers/config-commands";
+import { registerSessionCommands } from "./helpers/commands/session-commands";
+import { registerQueueCommands } from "./helpers/commands/queue-commands";
+import { registerConversionCommands } from "./helpers/commands/conversion-commands";
+import { registerConfigCommands } from "./helpers/commands/config-commands";
 
 export async function activate(context: vscode.ExtensionContext) {
   const registerCommand = (command: string, callback: (...args: any[]) => any | Promise<any>,): vscode.Disposable => {

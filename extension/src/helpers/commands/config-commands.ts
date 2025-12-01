@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { configureKotlinForBuildSystems } from "../helpers/build-systems";
+import { configureKotlinForBuildSystems } from "../build-systems";
 
 export function registerConfigCommands(
   context: vscode.ExtensionContext,

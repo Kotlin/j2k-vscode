@@ -103,6 +103,22 @@ async function restoreOriginalFromBackup(kotlinUri: vscode.Uri) {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
+  const registerCommand = (command: string, callback: (...args: any[]) => any | Promise<any>,): vscode.Disposable => {
+    const disposable = vscode.commands.registerCommand(command, callback);
+
+    context.subscriptions.push(disposable);
+
+    return disposable;
+  };
+
+  const registerBindings = (commands: Map<string, string>) => {
+    for (const [key, value] of commands) {
+      registerCommand(key, () =>
+        vscode.commands.executeCommand(value),
+      );
+    }
+  };
+
   // so that we don't have to discover open workspaces when accepting/rejecting,
   // we convey this state between the convert command
   // and the accept/cancel commands
@@ -232,12 +248,10 @@ export async function activate(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand("setContext", "j2k.sessionActive", true);
   }
   
-  context.subscriptions.push(
-    vscode.commands.registerCommand("j2k.startConversionSession", () => {
-      sessionBeginIfRequired();
-      vscode.window.showInformationMessage("J2K: Conversion session started.");
-    })
-  );
+  registerCommand("j2k.startConversionSession", () => {
+    sessionBeginIfRequired();
+    vscode.window.showInformationMessage("J2K: Conversion session started.");
+  });
 
   function inDiff(editor: vscode.TextEditor | undefined): boolean {
     if (!editor) {
@@ -343,7 +357,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   }
 
-  const queueFile = vscode.commands.registerCommand(
+  registerCommand(
     "j2k.queueFile",
     async (resource?: vscode.Uri, resources?: vscode.Uri[]) => {
       sessionBeginIfRequired();
@@ -377,65 +391,61 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "j2k.queue.openProgress",
-      async (job: Job) => {
-        let document = await vscode.workspace.openTextDocument(job.progressUri);
+  registerCommand(
+    "j2k.queue.openProgress",
+    async (job: Job) => {
+      let document = await vscode.workspace.openTextDocument(job.progressUri);
 
-        if (document.languageId !== "kotlin") {
-          document = await vscode.languages.setTextDocumentLanguage(
-            document,
-            "kotlin",
-          );
-        }
+      if (document.languageId !== "kotlin") {
+        document = await vscode.languages.setTextDocumentLanguage(
+          document,
+          "kotlin",
+        );
+      }
 
-        await vscode.window.showTextDocument(document, { preview: true });
-      },
-    ),
+      await vscode.window.showTextDocument(document, { preview: true });
+    },
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      "j2k.completed.openDiff",
-      async (completedJob: CompletedJob) => {
-        vcsHandler = await detectVCS(outputChannel);
+  registerCommand(
+    "j2k.completed.openDiff",
+    async (completedJob: CompletedJob) => {
+      vcsHandler = await detectVCS(outputChannel);
 
-        const left = await vscode.workspace.openTextDocument(
-          completedJob.job.javaUri,
-        );
+      const left = await vscode.workspace.openTextDocument(
+        completedJob.job.javaUri,
+      );
 
-        const { dir, name } = path.parse(completedJob.job.javaUri.fsPath);
+      const { dir, name } = path.parse(completedJob.job.javaUri.fsPath);
 
-        const rightUri = vscode.Uri.from({
-          scheme: "untitled",
-          path: path.join(dir, name + ".kt"),
-        });
-        let right = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === rightUri.toString());
-        if (!right) {
-          right = await vscode.workspace.openTextDocument(rightUri);
-          right = await vscode.languages.setTextDocumentLanguage(right, "kotlin");
+      const rightUri = vscode.Uri.from({
+        scheme: "untitled",
+        path: path.join(dir, name + ".kt"),
+      });
+      let right = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === rightUri.toString());
+      if (!right) {
+        right = await vscode.workspace.openTextDocument(rightUri);
+        right = await vscode.languages.setTextDocumentLanguage(right, "kotlin");
 
-          // provide actual text
-          const edit = new vscode.WorkspaceEdit();
-          edit.replace(rightUri, new vscode.Range(0,0,0,0), completedJob.kotlinText);
-          await vscode.workspace.applyEdit(edit);
-        }
+        // provide actual text
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(rightUri, new vscode.Range(0,0,0,0), completedJob.kotlinText);
+        await vscode.workspace.applyEdit(edit);
+      }
 
-        javaUri = completedJob.job.javaUri;
-        kotlinUri = right.uri;
+      javaUri = completedJob.job.javaUri;
+      kotlinUri = right.uri;
 
-        await vscode.commands.executeCommand(
-          "vscode.diff",
-          left.uri,
-          right.uri,
-          "Java to Kotlin Preview",
-        );
-      },
-    ),
+      await vscode.commands.executeCommand(
+        "vscode.diff",
+        left.uri,
+        right.uri,
+        "Java to Kotlin Preview",
+      );
+    },
   );
 
-  const acceptAndReplace = vscode.commands.registerCommand(
+  registerCommand(
     "j2k.acceptAndReplaceConversion",
     async () => {
       // PRE: our diff is open therefore j2k.convertFile has run
@@ -514,7 +524,7 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
-  const cancelAndDiscard = vscode.commands.registerCommand(
+  registerCommand(
     "j2k.cancelConversion",
     async () => {
       const currentJavaUri = javaUri;
@@ -534,8 +544,6 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
 
-  context.subscriptions.push(queueFile, acceptAndReplace, cancelAndDiscard);
-
   // only show our buttons when we are actively in the diff editor
   vscode.window.onDidChangeActiveTextEditor(
     (editor: vscode.TextEditor | undefined) => {
@@ -551,174 +559,158 @@ export async function activate(context: vscode.ExtensionContext) {
   // the toolbar automatically detects keybinds to render below
   // the title. therefore we create aliases which do not have
   // keybinds
-  context.subscriptions.push(
-    vscode.commands.registerCommand("j2k.acceptFromToolbar", () =>
-      vscode.commands.executeCommand("j2k.acceptAndReplaceConversion"),
-    ),
-    vscode.commands.registerCommand("j2k.cancelFromToolbar", () =>
-      vscode.commands.executeCommand("j2k.cancelConversion"),
-    ),
-    vscode.commands.registerCommand("j2k.commitSessionFromToolbar", () =>
-      vscode.commands.executeCommand("j2k.commitConversionSession"),
-    ),
-    vscode.commands.registerCommand("j2k.rejectSessionFromToolbar", () =>
-      vscode.commands.executeCommand("j2k.rejectConversionSession"),
-    ),
-  );
+  registerBindings(new Map<string, string>([
+    ["j2k.acceptFromToolbar", "j2k.acceptAndReplaceConversion"],
+    ["j2k.cancelFromToolbar", "j2k.cancelConversion"],
+    ["j2k.commitSessionFromToolbar", "j2k.commitConversionSession"],
+    ["j2k.rejectSessionFromToolbar", "j2k.rejectConversionSession"],
+  ]));
 
   // api key storage
-  context.subscriptions.push(
-    vscode.commands.registerCommand("j2k.setApiKey", async () => {
-      const key = await vscode.window.showInputBox({
-        prompt: "Enter your LLM API key",
-        password: true,
-        ignoreFocusOut: true,
-      });
+  registerCommand("j2k.setApiKey", async () => {
+    const key = await vscode.window.showInputBox({
+      prompt: "Enter your LLM API key",
+      password: true,
+      ignoreFocusOut: true,
+    });
 
-      if (key) {
-        await context.secrets.store("j2k.apiKey", key);
-        vscode.window.showInformationMessage(
-          "LLM API key saved to VS Code secure storage.",
-        );
-
-        outputChannel.appendLine(
-          "LLM API key saved to VS Code secure storage.",
-        );
-      }
-    }),
-  );
-
-  // bind the enable kotlin function to a command
-  context.subscriptions.push(
-    vscode.commands.registerCommand("j2k.configureKotlin", async () => {
-      outputChannel.appendLine("Manual trigger: Configuring Kotlin");
-
-      const systems = await detectBuildSystems();
-
-      const actionable = systems.filter((s) => s.name !== "none");
-      if (actionable.length === 0) {
-        outputChannel.appendLine("No supported build system detected.");
-        return;
-      }
-
-      for (const system of actionable) {
-        try {
-          outputChannel.appendLine(`Checking Kotlin setup for ${system.name}…`);
-          if (await system.needsKotlin()) {
-            outputChannel.appendLine(`Enabling Kotlin for ${system.name}…`);
-            await system.enableKotlin();
-            outputChannel.appendLine(`Kotlin configured for ${system.name}.`);
-          } else {
-            outputChannel.appendLine(
-              `Kotlin already configured for ${system.name}.`,
-            );
-          }
-        } catch (err: any) {
-          outputChannel.appendLine(
-            `Failed to configure Kotlin for ${system.name}: ${err?.message ?? String(err)}`,
-          );
-        }
-      }
-    }),
-  );
-  
-  context.subscriptions.push(
-    vscode.commands.registerCommand("j2k.commitConversionSession", async () => {
-      if (!session.active) {
-        vscode.window.showErrorMessage("No active conversion session.");
-        return;
-      }
-      
-      const suggestedText = `Convert ${session.acceptedFiles.length} files to Kotlin`;
-      const name = await vscode.window.showInputBox({
-        prompt: "Give this coversion session a name (optional)",
-        placeHolder: suggestedText
-      });
-
-      const message = name && name.trim().length > 0 ? name!.trim() : suggestedText;
-
-      try {
-        const vcsHandler = await detectVCS(outputChannel);
-        if (typeof vcsHandler.commitAll === "function") {
-          await vcsHandler.commitAll(session.acceptedFiles, message);
-        }
-        // nothing to do for non-vcs
-
-        vscode.window.showInformationMessage(`Committed session: ${message}`);
-        
-        worker.clearAllViews(queue);
-
-        for (const kotlinUri of session.acceptedFiles) {
-          const kotlinPath = kotlinUri.fsPath;
-          const dir = path.dirname(kotlinPath);
-          const base = path.basename(kotlinPath, ".kt");
-
-          const javaPath = path.join(dir, base + ".java");
-          const javaBackupPath = javaPath + ".j2k";
-          const javaBackupUri = vscode.Uri.file(javaBackupPath);
-
-          try {
-            await vscode.workspace.fs.delete(javaBackupUri, { recursive: false, useTrash: false });
-          } catch {
-            // if it doesn't exist, fine
-          }
-        }
-      } catch (err: any) {
-        vscode.window.showErrorMessage(`Failed to commit session: ${err?.message ?? String(err)}`);
-        return;
-      } finally {
-        // reset session state
-        session.active = false;
-        session.acceptedFiles = [];
-        vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
-        
-        deleteSessionFile();
-        session.workspaceFolder = undefined;
-      }
-    })
-  );
-  
-  context.subscriptions.push(
-    vscode.commands.registerCommand("j2k.rejectConversionSession", async () => {
-      if (!session.active) {
-        vscode.window.showErrorMessage("No active conversion session.");
-        return;
-      }
-
-      const confirm = await vscode.window.showWarningMessage(
-        `This will discard Kotlin conversions for ${session.acceptedFiles.length} files and restore the original Java files.`,
-        { modal: true },
-        "Discard session",
-        "Cancel",
+    if (key) {
+      await context.secrets.store("j2k.apiKey", key);
+      vscode.window.showInformationMessage(
+        "LLM API key saved to VS Code secure storage.",
       );
 
-      if (confirm !== "Discard session") {
-        return;
-      }
+      outputChannel.appendLine(
+        "LLM API key saved to VS Code secure storage.",
+      );
+    }
+  }),
 
+  // bind the enable kotlin function to a command
+  registerCommand("j2k.configureKotlin", async () => {
+    outputChannel.appendLine("Manual trigger: Configuring Kotlin");
+
+    const systems = await detectBuildSystems();
+
+    const actionable = systems.filter((s) => s.name !== "none");
+    if (actionable.length === 0) {
+      outputChannel.appendLine("No supported build system detected.");
+      return;
+    }
+
+    for (const system of actionable) {
       try {
-        for (const kotlinUri of session.acceptedFiles) {
-          await restoreOriginalFromBackup(kotlinUri);
+        outputChannel.appendLine(`Checking Kotlin setup for ${system.name}…`);
+        if (await system.needsKotlin()) {
+          outputChannel.appendLine(`Enabling Kotlin for ${system.name}…`);
+          await system.enableKotlin();
+          outputChannel.appendLine(`Kotlin configured for ${system.name}.`);
+        } else {
+          outputChannel.appendLine(
+            `Kotlin already configured for ${system.name}.`,
+          );
         }
-
-        worker.clearAllViews(queue);
-
-        vscode.window.showInformationMessage("Conversion session discarded and files restored.");
       } catch (err: any) {
-        vscode.window.showErrorMessage(
-          `Failed to discard session: ${err?.message ?? String(err)}`,
+        outputChannel.appendLine(
+          `Failed to configure Kotlin for ${system.name}: ${err?.message ?? String(err)}`,
         );
-        return;
-      } finally {
-        session.active = false;
-        session.acceptedFiles = [];
-        vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
-
-        deleteSessionFile();
-        session.workspaceFolder = undefined;
       }
-    }),
-  );
+    }
+  }),
+  
+  registerCommand("j2k.commitConversionSession", async () => {
+    if (!session.active) {
+      vscode.window.showErrorMessage("No active conversion session.");
+      return;
+    }
+    
+    const suggestedText = `Convert ${session.acceptedFiles.length} files to Kotlin`;
+    const name = await vscode.window.showInputBox({
+      prompt: "Give this coversion session a name (optional)",
+      placeHolder: suggestedText
+    });
+
+    const message = name && name.trim().length > 0 ? name!.trim() : suggestedText;
+
+    try {
+      const vcsHandler = await detectVCS(outputChannel);
+      if (typeof vcsHandler.commitAll === "function") {
+        await vcsHandler.commitAll(session.acceptedFiles, message);
+      }
+      // nothing to do for non-vcs
+
+      vscode.window.showInformationMessage(`Committed session: ${message}`);
+      
+      worker.clearAllViews(queue);
+
+      for (const kotlinUri of session.acceptedFiles) {
+        const kotlinPath = kotlinUri.fsPath;
+        const dir = path.dirname(kotlinPath);
+        const base = path.basename(kotlinPath, ".kt");
+
+        const javaPath = path.join(dir, base + ".java");
+        const javaBackupPath = javaPath + ".j2k";
+        const javaBackupUri = vscode.Uri.file(javaBackupPath);
+
+        try {
+          await vscode.workspace.fs.delete(javaBackupUri, { recursive: false, useTrash: false });
+        } catch {
+          // if it doesn't exist, fine
+        }
+      }
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Failed to commit session: ${err?.message ?? String(err)}`);
+      return;
+    } finally {
+      // reset session state
+      session.active = false;
+      session.acceptedFiles = [];
+      vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
+      
+      deleteSessionFile();
+      session.workspaceFolder = undefined;
+    }
+  });
+  
+  registerCommand("j2k.rejectConversionSession", async () => {
+    if (!session.active) {
+      vscode.window.showErrorMessage("No active conversion session.");
+      return;
+    }
+
+    const confirm = await vscode.window.showWarningMessage(
+      `This will discard Kotlin conversions for ${session.acceptedFiles.length} files and restore the original Java files.`,
+      { modal: true },
+      "Discard session",
+      "Cancel",
+    );
+
+    if (confirm !== "Discard session") {
+      return;
+    }
+
+    try {
+      for (const kotlinUri of session.acceptedFiles) {
+        await restoreOriginalFromBackup(kotlinUri);
+      }
+
+      worker.clearAllViews(queue);
+
+      vscode.window.showInformationMessage("Conversion session discarded and files restored.");
+    } catch (err: any) {
+      vscode.window.showErrorMessage(
+        `Failed to discard session: ${err?.message ?? String(err)}`,
+      );
+      return;
+    } finally {
+      session.active = false;
+      session.acceptedFiles = [];
+      vscode.commands.executeCommand("setContext", "j2k.sessionActive", false);
+
+      deleteSessionFile();
+      session.workspaceFolder = undefined;
+    }
+  });
 }
 
 // This method is called when your extension is deactivated

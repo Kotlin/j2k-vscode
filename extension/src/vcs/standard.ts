@@ -27,12 +27,12 @@ export class StandardFileRenamer implements VCSFileRenamer {
       `StandardFileRenamer: No-op on staging the conversion replacement`,
     );
   }
-  
+
   async stageWithoutCommit(kotlinUri: vscode.Uri): Promise<void> {
     // no op
     this.channel.appendLine(`StandardFileRenamer: No-op stageWithoutCommit`);
   }
-  
+
   async commitAll(uris: vscode.Uri[], message: string): Promise<void> {
     // no op
     this.channel.appendLine(`StandardFileRenamer: No-op commitAll`);

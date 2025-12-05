@@ -7,26 +7,27 @@ export interface AcceptedItem {
   uri: vscode.Uri;
 }
 
-
-export class AcceptedListProvider implements vscode.TreeDataProvider<AcceptedItem> {
+export class AcceptedListProvider
+  implements vscode.TreeDataProvider<AcceptedItem>
+{
   private onChange = new vscode.EventEmitter<void>();
   readonly onDidChangeTreeData = this.onChange.event;
-  
+
   constructor(private readonly worker: Worker) {
     worker.onDidChange(() => this.onChange.fire());
   }
-  
+
   getChildren(element?: AcceptedItem): AcceptedItem[] {
     if (element) {
       return [];
     }
-    
+
     return this.worker.accepted.map(({ uri }) => ({
       label: path.basename(uri.fsPath),
-      uri
+      uri,
     }));
   }
-  
+
   getTreeItem(acceptedItem: AcceptedItem): vscode.TreeItem {
     const item = new vscode.TreeItem(acceptedItem.label);
 
@@ -38,7 +39,7 @@ export class AcceptedListProvider implements vscode.TreeDataProvider<AcceptedIte
       title: "Open File",
       arguments: [acceptedItem.uri],
     };
-    
+
     return item;
   }
 }

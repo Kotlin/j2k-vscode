@@ -32,7 +32,7 @@
         {
           "id": "j2k",
           "title": "Java to Kotlin",
-          "icon": "$(replace)"
+          "icon": "assets/kotlin_icon.svg"
         }
       ]
     },

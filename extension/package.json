@@ -1,9 +1,10 @@
 {
   "name": "j2k-vscode",
   "publisher": "JetBrains",
-  "displayName": "j2k-vscode",
-  "description": "A VS Code extension that provides a polished user experience for converting Java files to Kotlin with manual review capabilities.",
+  "displayName": "Java to Kotlin converter",
+  "description": "Convert Java files to Kotlin with manual review capabilities",
   "version": "0.1.11",
+  "icon": "assets/kotlin_icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/Kotlin/j2k-vscode.git"

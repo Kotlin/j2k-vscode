@@ -16,7 +16,13 @@
     "vscode": "^1.101.0"
   },
   "categories": [
+    "Programming Languages",
     "Other"
+  ],
+  "keywords": [
+    "languages",
+    "java",
+    "kotlin"
   ],
   "activationEvents": [
     "onLanguage:java",

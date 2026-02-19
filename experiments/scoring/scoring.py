@@ -1,7 +1,7 @@
 import requests, re, pathlib, subprocess
 import xml.etree.ElementTree as ET
 
-import v2_conversion
+import v6_conversion
 
 def get_java_files(directory="."):
   return list(pathlib.Path(directory).rglob("*.java"))

@@ -3,7 +3,7 @@
   "publisher": "JetBrains",
   "displayName": "Java to Kotlin converter",
   "description": "Convert Java files to Kotlin with manual review capabilities",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "icon": "assets/kotlin_icon.png",
   "repository": {
     "type": "git",

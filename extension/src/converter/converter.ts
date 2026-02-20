@@ -491,7 +491,8 @@ async function convertUsingCopilot(
 ) {
   outputChannel.appendLine("convertUsingCopilot: Using GitHub Copilot (basic)");
 
-  const [model] = await vscode.lm.selectChatModels({ vendor: "copilot" });
+  const [model] = (await vscode.lm.selectChatModels({ vendor: "copilot" }))
+    .filter(m => m.id === "gpt-4.1");
   if (!model) {
     throw new Error("GitHub Copilot is not available/enabled.");
   }

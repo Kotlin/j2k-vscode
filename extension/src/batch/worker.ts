@@ -90,7 +90,7 @@ export class Worker {
           buf += token;
           this.mem.set(job.progressUri, buf);
         },
-        reporter,
+        this.reporter,
       );
 
       if (this.current !== job) {

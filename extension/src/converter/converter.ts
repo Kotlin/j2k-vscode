@@ -9,6 +9,7 @@ import { BaseMessage } from "@langchain/core/messages";
 import * as vscode from "vscode";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { detectTechnologies } from "./detect-technologies";
+import { TelemetryReporter } from "@vscode/extension-telemetry";
 
 const TASK_CONTEXT =
   "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist.";
@@ -538,10 +539,13 @@ export async function convertToKotlin(
   outputChannel: vscode.OutputChannel,
   context: vscode.ExtensionContext,
   onToken: (token: string) => Promise<void>,
+  reporter: TelemetryReporter
 ) {
   const provider = vscode.workspace
     .getConfiguration("j2k")
     .get<string>("provider", "copilot");
+  
+  reporter.sendTelemetryEvent("conversionStarted");
 
   if (provider === "copilot") {
     return await convertUsingCopilot(javaCode, outputChannel, context, onToken);

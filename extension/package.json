@@ -274,6 +274,7 @@
     "@langchain/core": "^0.3.62",
     "@langchain/ollama": "^0.2.3",
     "@langchain/openai": "^0.5.18",
+    "@vscode/extension-telemetry": "^1.5.0",
     "java-parser": "^3.0.1",
     "langchain": "^0.3.29",
     "xml2js": "^0.6.2"

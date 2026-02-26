@@ -3,6 +3,7 @@ import { Queue, Job } from "./queue";
 import { MemoryContentProvider } from "./memory";
 import { convertToKotlin, extractLastKotlinBlock } from "../converter";
 import path from "path";
+import { TelemetryReporter } from "@vscode/extension-telemetry";
 
 // for current prompt
 function extractKotlinOld(text: string) {
@@ -35,6 +36,7 @@ export class Worker {
     private readonly queue: Queue,
     private readonly mem: MemoryContentProvider,
     private readonly out: vscode.OutputChannel,
+    private readonly reporter: TelemetryReporter,
   ) {
     queue.onDidChange(() => this.maybeStart());
   }
@@ -88,6 +90,7 @@ export class Worker {
           buf += token;
           this.mem.set(job.progressUri, buf);
         },
+        reporter,
       );
 
       if (this.current !== job) {

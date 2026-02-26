@@ -8,8 +8,16 @@ import { registerSessionCommands } from "./helpers/commands/session-commands";
 import { registerQueueCommands } from "./helpers/commands/queue-commands";
 import { registerConversionCommands } from "./helpers/commands/conversion-commands";
 import { registerConfigCommands } from "./helpers/commands/config-commands";
+import { TelemetryReporter } from "@vscode/extension-telemetry";
+
+const connectionString = "undefined";
 
 export async function activate(context: vscode.ExtensionContext) {
+  const reporter = new TelemetryReporter(connectionString);
+  context.subscriptions.push(reporter);
+
+  reporter.sendTelemetryEvent("extensionActivated");
+
   const registerCommand = (
     command: string,
     callback: (...args: any[]) => any | Promise<any>,
@@ -52,7 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
   await initialiseBuildSystems(outputChannel);
 
   const { queue, mem, worker, acceptedView, completedTree, queueProvider } =
-    createBatchController(context, outputChannel, session);
+    createBatchController(context, outputChannel, session, reporter);
 
   registerQueueCommands(context, {
     queue,

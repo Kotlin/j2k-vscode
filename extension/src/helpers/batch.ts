@@ -5,6 +5,7 @@ import { Worker } from "../batch/worker";
 import { QueueListProvider } from "../batch/queue-view";
 import { CompletedListProvider } from "../batch/completed-view";
 import { AcceptedListProvider } from "../batch/accepted-view";
+import { TelemetryReporter } from "@vscode/extension-telemetry";
 
 export type ConversionSession = {
   active: boolean;
@@ -16,10 +17,11 @@ export function createBatchController(
   context: vscode.ExtensionContext,
   outputChannel: vscode.OutputChannel,
   session: ConversionSession,
+  reporter: TelemetryReporter,
 ) {
   const queue = new Queue();
   const mem = new MemoryContentProvider();
-  const worker = new Worker(context, queue, mem, outputChannel);
+  const worker = new Worker(context, queue, mem, outputChannel, reporter);
   worker.start();
   if (session.active && session.acceptedFiles.length > 0) {
     worker.restoreAccepted(session.acceptedFiles);

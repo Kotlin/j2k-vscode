@@ -1,5 +1,7 @@
 # j2k-vscode
 
+[![Kotlin Alpha](https://kotl.in/badges/experimental.svg)](https://kotlinlang.org/docs/components-stability.html)
+
 A VS Code extension which provides one-click, review-before-you-commit Java to Kotlin migration inside VS Code. The extension utilises LLMs to provide idiomatic conversion suggestions, helping Java developers migrate to Kotlin.
 
 ## Demo

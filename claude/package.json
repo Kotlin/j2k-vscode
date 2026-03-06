@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "tsx": "^4.21.0"
+  },
+  "scripts": {
+    "build:claude-md": "tsx build-claudemd.ts"
+  }
+}

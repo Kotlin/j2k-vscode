@@ -7,14 +7,19 @@ import { SPRING_PROMPT } from "./specific/spring";
 import { HIBERNATE_PROMPT } from "./specific/hibernate";
 import { LOMBOK_PROMPT } from "./specific/lombok";
 
-const TASK_CONTEXT = `You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist.`;
+import taskContext from "../../../../prompt/task_context.txt";
+import taskDescription from "../../../../prompt/task_description.txt";
+import outputFormatting from "../../../../prompt/output_formatting.txt";
+import remarks from "../../../../prompt/remarks.txt";
+import system from "../../../../prompt/system.txt";
 
-const TASK_DESCRIPTION = `Your task is to convert provided Java code into **idiomatic Kotlin**, preserving behaviour while improving readability, safety and maintainability.`;
+const TASK_CONTEXT = taskContext;
 
-const OUTPUT_FORMATTING = `Wrap your final conversion result in <kotlin> tags.`;
+const TASK_DESCRIPTION = taskDescription;
 
-const REMARKS =
-  "Ensure the final Kotlin output would compile and run identically to the Java input.";
+const OUTPUT_FORMATTING = outputFormatting;
+
+const REMARKS = remarks;
 
 const PREFILL = `<convert_think>\n`;
 
@@ -35,11 +40,7 @@ export function getPrompt(
 ${javaCode}
 </java>`;
 
-  const systemContent = [
-    "You are a senior Kotlin engineer and Java-Kotlin JVM interop specialist. ",
-    "Follow the four-step conversion (<convert_think>) and output final code in <kotlin> tags. ",
-    "Preserve behavior and API, prefer idiomatic Kotlin when safe.",
-  ].join("");
+  const systemContent = system;
 
   const humanContentFirstPart = [
     TASK_CONTEXT,

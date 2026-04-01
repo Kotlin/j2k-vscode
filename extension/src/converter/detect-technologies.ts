@@ -1,4 +1,3 @@
-import { text } from "stream/consumers";
 import * as vscode from "vscode";
 
 export function detectTechnologies(code: string) {

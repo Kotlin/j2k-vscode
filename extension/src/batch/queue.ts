@@ -46,5 +46,6 @@ export class Queue {
 
   clear() {
     this.queued = [];
+    this.eventEmitter.fire();
   }
 }

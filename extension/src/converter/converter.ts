@@ -190,7 +190,6 @@ async function makeModel(context: vscode.ExtensionContext) {
         keepAlive: 0,
       });
     case "openrouter":
-      console.log(cfg.get<string>("openRouter.baseUrl"));
       return new ChatOpenAI({
         model: model,
         apiKey: apiKey,

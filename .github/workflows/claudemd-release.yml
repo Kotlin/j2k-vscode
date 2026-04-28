@@ -1,0 +1,36 @@
+name: build CLAUDE.md and release
+
+on:
+  push:
+    tags:
+      - "claude-md-v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v6
+
+      - name: setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+
+      - name: npm install
+        working-directory: claude
+        run: npm ci
+
+      - name: build CLAUDE.md
+        working-directory: claude
+        run: npm run build:claude-md
+
+      - name: make github release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: claude/CLAUDE.md
+          generate_release_notes: true
